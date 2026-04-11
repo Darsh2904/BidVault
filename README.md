@@ -1,135 +1,147 @@
-# BidVault MERN Authentication System
+# BidVault
+BidVault is a modern auction platform where buyers and sellers can trade high-value items with more confidence.
+The idea is simple: make online auctions feel exciting, but keep payments safe through an escrow-style flow.
 
-This project now includes a full authentication flow with React frontend and Node.js + Express + MongoDB backend.
+# This project includes:
 
-## Features Implemented
+A React frontend for browsing, bidding, account dashboards, and admin actions
+A Node.js and Express backend with MongoDB for auth, listings, approvals, and payment workflows
+Razorpay integration for secure payment collection and escrow state tracking
+What Makes BidVault Different
+Most auction apps either feel outdated or risky when money is involved.
+BidVault focuses on both:
 
-- Login / Signup button in navbar (top-right).
-- Signup with Name, Email, Password, Role (Buyer/Seller or Admin).
-- Email OTP verification before signup completion.
-- Login with JWT-based authentication.
-- Role-based route protection:
-	- Admin -> Admin Dashboard
-	- Buyer/Seller -> User Home
-- Admin approval workflow for new admin signups.
-- Password hashing with bcrypt.
-- Persisted login using localStorage token.
-- Logout support.
-- Username shown in navbar after login.
+A clean, fast user experience
+A safer transaction lifecycle from listing to payment release
+The platform supports role-based behavior for:
 
-## Folder Structure
+Buyer and Seller users
+Admin users for moderation and control
+Core Features
+Authentication and Access
+OTP-enabled signup and login flow
+JWT-based protected APIs
+Admin approval flow for elevated access
+Blocked email handling for abuse prevention
+Auction Lifecycle
+Sellers can create listings with category, condition, bids, and details
+Admin reviews listings and approves or rejects them
+Approved listings appear in Browse
+Sold or payment-locked items are removed from live Browse visibility
+Escrow Payment Flow
+Razorpay order creation from approved listings
+Payment confirmation with signature verification
+Escrow state transitions such as unpaid, escrow held, release requested, released, and disputed
+Buyer, seller, and admin actions for post-payment states
+Notifications and Dashboard
+In-app notifications for approvals, rejections, and payment milestones
+Dashboard views for user activity, listings, and escrow transactions
+Seller-focused listing visibility and status updates
+UI and Experience
+Shared theme system for light and dark mode
+Unified typography and color behavior across major screens
+Responsive layout for desktop and mobile
+INR currency display throughout key user flows
 
-### Frontend
+# Tech Stack
+Frontend:
+-React
+-React Router
+-Vite
 
-- src/context/AuthContext.jsx
-- src/utils/authApi.js
-- src/components/AuthPage.jsx
-- src/components/ProtectedRoute.jsx
-- src/components/AuthNavActions.jsx
+# Backend:
+-Node.js
+-Express
+-MongoDB with Mongoose
+-JWT Auth
 
-### Backend
+# Payments:
+-Razorpay Checkout
+-Webhook signature verification
+-Escrow transaction tracking
 
-- backend/src/server.js
-- backend/src/config/db.js
-- backend/src/models/User.js
-- backend/src/controllers/authController.js
-- backend/src/middleware/auth.js
-- backend/src/routes/authRoutes.js
-- backend/src/utils/sendOtpEmail.js
-- backend/src/utils/token.js
+# Project Structure
+src: frontend app code
+src/components: pages and major UI views
+src/context: authentication and theme context providers
+src/utils: frontend API helper layer
+backend/src/controllers: backend request handlers
+backend/src/models: MongoDB schemas
+backend/src/routes: API route definitions
+backend/src/utils: payment and helper utilities
+Local Setup
+Prerequisites
+Node.js 18+
+MongoDB running locally
+Razorpay account for payment testing
 
-## User Model Fields
-
-- name
-- email
-- password (hashed)
-- role (buyer_seller or admin)
-- isVerified
-
-Additional fields used for workflow:
-
-- isAdminApproved
-- otpHash
-- otpExpiresAt
-
-## Setup Instructions
-
-## 1) Backend Setup
-
-1. Open terminal in backend folder.
-2. Install dependencies:
-
-```bash
+# Install Dependencies 
+At project root:
 npm install
-```
 
-3. Create env file:
-
-```bash
-cp .env.example .env
-```
-
-4. Update backend/.env values:
-
-- MONGODB_URI
-- JWT_SECRET
-- CLIENT_URL
-- SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS (for real email OTP)
-- PAYMENT_GATEWAY (mock, razorpay, stripe)
-- PAYMENT_CURRENCY (INR recommended)
-- PAYMENT_PLATFORM_FEE_PERCENT (example: 2)
-- RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET (when using Razorpay)
-- RAZORPAY_WEBHOOK_SECRET (for Razorpay webhook signature validation)
-- STRIPE_SECRET_KEY (when using Stripe)
-
-5. Start backend:
-
-```bash
-npm run dev
-```
-
-Backend base URL: http://localhost:5000/api
-
-## 2) Frontend Setup
-
-From project root:
-
-```bash
+In backend folder:
+cd backend
 npm install
+
+# Environment Variables
+Create backend environment values for:
+
+PORT
+MONGODB_URI
+JWT_SECRET
+JWT_EXPIRES_IN
+CLIENT_URL
+SMTP_HOST
+SMTP_PORT
+SMTP_USER
+SMTP_PASS
+MAIL_FROM
+PAYMENT_GATEWAY
+PAYMENT_CURRENCY
+PAYMENT_PLATFORM_FEE_PERCENT
+RAZORPAY_KEY_ID
+RAZORPAY_KEY_SECRET
+RAZORPAY_WEBHOOK_SECRET
+
+# Run the App
+Frontend:
 npm run dev
-```
 
-Frontend URL: http://localhost:5173
+Backend:
+cd backend
+npm run dev
 
-Optional frontend env:
+Then open:
+http://localhost:5173
 
-- VITE_API_URL=http://localhost:5000/api
+# Payment Testing Notes
+-In Razorpay test mode, QR scanning can be inconsistent in some cases
+-If QR is not reliable, test checkout with other available payment options first
+-Merchant branding shown in checkout can depend on the connected Razorpay account profile
+-For production-like behavior, live keys and completed Razorpay account setup are required
 
-## API Endpoints
+# API Highlights
+-Auth and profile routes for login and session handling
+-Auction routes for creation, moderation, approved listings, and personal listings
+-Payment routes for escrow order creation, confirmation, release, dispute, and user transaction history
+-Notification routes for user updates and system events
 
-- POST /api/auth/signup/request-otp
-- POST /api/auth/signup/verify-otp
-- POST /api/auth/login
-- GET /api/auth/me
-- GET /api/auth/admin-requests (admin only)
-- POST /api/auth/admin-requests/:userId/approve (admin only)
+# Current Status
+-BidVault is production-minded but still evolving.
+-Core flows are functional:
 
-### Payment & Escrow APIs
+-Listing creation and approval
+-Browse and auction detail
+-Escrow payment initiation and confirmation
+-Role-based dashboards and transaction visibility
 
-- GET /api/payments/me
-- POST /api/payments/create-escrow-order
-- POST /api/payments/confirm-payment
-- POST /api/payments/:transactionId/request-release
-- POST /api/payments/:transactionId/release
-- POST /api/payments/:transactionId/dispute
+# Roadmap Ideas
+Real-time bidding updates with sockets
+Better listing analytics for sellers
+Stronger dispute workflow and admin tooling
+Automated payout and refund control panel
+Improved audit logs for payment and state transitions
 
-## Admin Approval Logic
+# Author
+Built by Darsh Patel and contributors as a practical MERN project focused on trust-first auctions.
 
-- First admin can be auto-approved if no approved admin exists.
-- Any later admin signup remains pending until an approved admin approves it.
-- Pending admin cannot log in to dashboard until approved.
-
-## Notes
-
-- In development (non-production), OTP is also returned in API response as devOtp for easier testing.
-- For production, configure SMTP and set NODE_ENV=production to disable dev OTP exposure.
