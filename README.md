@@ -61,19 +61,20 @@ Frontend:
 -Escrow transaction tracking
 
 # Project Structure
-src: frontend app code
-src/components: pages and major UI views
-src/context: authentication and theme context providers
-src/utils: frontend API helper layer
-backend/src/controllers: backend request handlers
-backend/src/models: MongoDB schemas
-backend/src/routes: API route definitions
-backend/src/utils: payment and helper utilities
-Local Setup
-Prerequisites
-Node.js 18+
-MongoDB running locally
-Razorpay account for payment testing
+-src: frontend app code
+-src/components: pages and major UI views
+-src/context: authentication and theme context providers
+-src/utils: frontend API helper layer
+-backend/src/controllers: backend request handlers
+-backend/src/models: MongoDB schemas
+-backend/src/routes: API route definitions
+-backend/src/utils: payment and helper utilities
+
+# Local Setup
+-Prerequisites
+-Node.js 18+
+-MongoDB running locally
+-Razorpay account for payment testing
 
 # Install Dependencies 
 At project root:
