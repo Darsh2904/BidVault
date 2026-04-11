@@ -1,0 +1,67 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100%;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+html[data-theme="light"] {
+  color-scheme: light;
+}
+
+html[data-theme="light"]:root {
+  --bg: #f4f4fc !important;
+  --bg2: #ebebf8 !important;
+  --bg3: #f0f0ff !important;
+  --bg4: #e2e2f0 !important;
+  --purple: #5b52ee !important;
+  --purple-light: #7c75f5 !important;
+  --gold: #d97706 !important;
+  --green: #0f9f74 !important;
+  --red: #dc2626 !important;
+  --orange: #ea580c !important;
+  --text: #1a1a2e !important;
+  --text-muted: #4a4a6a !important;
+  --text-dim: #76769a !important;
+  --muted: #5f5f80 !important;
+  --border: #d5d5ee !important;
+  --border2: #c5c5e5 !important;
+  --live-red: #dc2626 !important;
+}
+
+html[data-theme="light"] body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+html[data-theme="light"] .navbar,
+html[data-theme="light"] .nav {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border-bottom-color: var(--border) !important;
+}
+
+html[data-theme="light"] .sidebar,
+html[data-theme="light"] .card,
+html[data-theme="light"] .tbl-wrap,
+html[data-theme="light"] .chart-card,
+html[data-theme="light"] .bid-box,
+html[data-theme="light"] .countdown-box,
+html[data-theme="light"] .spec-card,
+html[data-theme="light"] .modal,
+html[data-theme="light"] .upload-box {
+  box-shadow: 0 6px 24px rgba(91, 82, 238, 0.08);
+}
