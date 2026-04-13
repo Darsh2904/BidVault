@@ -3,6 +3,7 @@ import User from "../models/User.js";
 import AuctionListing from "../models/AuctionListing.js";
 import Notification from "../models/Notification.js";
 import BlockedEmail from "../models/BlockedEmail.js";
+import PaymentTransaction from "../models/PaymentTransaction.js";
 import { PERMANENT_ADMIN } from "../config/permanentAdmin.js";
 
 function formatJoinedDate(dateInput) {
@@ -64,6 +65,34 @@ export async function getAdminUsers(req, res) {
   }
 }
 
+async function deleteUserAndRelatedData({ target, blockedBy, reason }) {
+  const normalizedEmail = String(target.email || "").toLowerCase();
+
+  await BlockedEmail.findOneAndUpdate(
+    { email: normalizedEmail },
+    {
+      email: normalizedEmail,
+      reason: reason || "Blocked due to suspicious activity",
+      blockedBy: blockedBy || "admin",
+    },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
+
+  await Notification.deleteMany({
+    $or: [{ recipientUser: target._id }, { recipientEmail: normalizedEmail }],
+  });
+
+  await AuctionListing.deleteMany({ sellerEmail: normalizedEmail });
+
+  await PaymentTransaction.deleteMany({
+    $or: [{ buyerUserId: target._id }, { sellerEmail: normalizedEmail }],
+  });
+
+  await User.findByIdAndDelete(target._id);
+
+  return normalizedEmail;
+}
+
 export async function updateAdminUserStatus(req, res) {
   try {
     const { userId } = req.params;
@@ -80,6 +109,24 @@ export async function updateAdminUserStatus(req, res) {
 
     if (target.email.toLowerCase() === PERMANENT_ADMIN.email.toLowerCase()) {
       return res.status(400).json({ message: "Permanent admin status cannot be changed" });
+    }
+
+    if (status === "suspended") {
+      if (target.role === "admin") {
+        return res.status(400).json({ message: "Admin account cannot be suspended from this action" });
+      }
+
+      const blockedEmail = await deleteUserAndRelatedData({
+        target,
+        blockedBy: req.user?.email,
+        reason: "Blocked due to suspension by admin",
+      });
+
+      return res.status(200).json({
+        message: "User suspended and deleted permanently",
+        deletedUserId: String(userId),
+        blockedEmail,
+      });
     }
 
     target.status = status;
@@ -104,25 +151,15 @@ export async function deleteAndBlockUser(req, res) {
       return res.status(400).json({ message: "Admin account cannot be deleted from this action" });
     }
 
-    await BlockedEmail.findOneAndUpdate(
-      { email: target.email.toLowerCase() },
-      {
-        email: target.email.toLowerCase(),
-        reason: "Blocked due to suspicious activity",
-        blockedBy: req.user?.email || "admin",
-      },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
-
-    await Notification.deleteMany({
-      $or: [{ recipientUser: target._id }, { recipientEmail: target.email.toLowerCase() }],
+    const blockedEmail = await deleteUserAndRelatedData({
+      target,
+      blockedBy: req.user?.email,
+      reason: "Blocked due to suspicious activity",
     });
-
-    await User.findByIdAndDelete(target._id);
 
     return res.status(200).json({
       message: "User deleted and email blocked permanently",
-      blockedEmail: target.email.toLowerCase(),
+      blockedEmail,
     });
   } catch (error) {
     return res.status(500).json({ message: "Failed to delete and block user", error: error.message });

@@ -72,7 +72,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .side-badge{margin-left:auto;background:var(--red);color:#fff;font-size:.65rem;font-weight:700;padding:2px 7px;border-radius:999px;}
 
 /* MAIN */
-.main{flex:1;padding:2rem;overflow-y:auto;overflow-x:hidden;background:var(--bg2);scroll-behavior:smooth;}
+.main{flex:1;padding:2rem;overflow-y:auto;overflow-x:auto;background:var(--bg2);scroll-behavior:smooth;}
 
 /* HEADER ROW */
 .dash-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.75rem;}
@@ -105,8 +105,8 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .sec-label{font-size:.68rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem;}
 
 /* TABLE */
-.tbl-wrap{background:var(--bg3);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:1.75rem;}
-table{width:100%;border-collapse:collapse;}
+.tbl-wrap{background:var(--bg3);border:1px solid var(--border);border-radius:14px;overflow-x:auto;overflow-y:hidden;margin-bottom:1.75rem;}
+table{width:100%;min-width:900px;border-collapse:collapse;}
 th{font-size:.68rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-align:left;padding:.85rem 1.25rem;background:var(--bg4);border-bottom:1px solid var(--border);}
 td{padding:.9rem 1.25rem;font-size:.9rem;border-bottom:1px solid rgba(108,92,231,.08);}
 tr:last-child td{border-bottom:none;}
@@ -127,7 +127,7 @@ tr:hover td{background:rgba(108,92,231,.04);}
 .pill.flagged{background:rgba(255,68,68,.15);color:var(--red);}
 
 /* ACTION BTNS */
-.act-btn{padding:.35rem .85rem;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.8rem;font-weight:600;cursor:pointer;border:none;transition:all .2s;}
+.act-btn{padding:.35rem .85rem;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.8rem;font-weight:600;cursor:pointer;border:none;transition:all .2s;white-space:nowrap;}
 .act-btn.rebid{background:var(--purple);color:#fff;}
 .act-btn.rebid:hover{background:var(--purple-light);}
 .act-btn.watch{background:transparent;border:1px solid rgba(255,255,255,.2);color:var(--text);}
@@ -1008,6 +1008,7 @@ function AdminDash({ user, token }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [adminNotice, setAdminNotice] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedUser, setSelectedUser] = useState(null);
   const displayName = getDisplayName(user);
   const sideItems = [
     { icon: "🎯", label: "Overview" },
@@ -1112,7 +1113,7 @@ function AdminDash({ user, token }) {
   };
 
   const handleViewUser = (entry) => {
-    pushNotice(`Viewing ${entry.name} (${entry.email})`);
+    setSelectedUser(entry);
   };
 
   const handleSuspendToggle = (userId) => {
@@ -1120,6 +1121,23 @@ function AdminDash({ user, token }) {
     if (!target) return;
 
     const nextStatus = target.status === "suspended" ? "active" : "suspended";
+
+    if (nextStatus === "suspended") {
+      const confirmed = window.confirm(
+        `Suspend ${target.name}? This will permanently delete the user account and related data.`
+      );
+
+      if (!confirmed) return;
+
+      deleteAndBlockUser(userId, token)
+        .then(() => {
+          setUsers((prev) => prev.filter((entry) => entry.id !== userId));
+          pushNotice("User suspended and deleted permanently.");
+        })
+        .catch((error) => pushNotice(error.message));
+
+      return;
+    }
 
     updateAdminUserStatus(userId, nextStatus, token)
       .then(({ user: updatedUser }) => {
@@ -1302,11 +1320,11 @@ function AdminDash({ user, token }) {
                       : <span className="pill active-s">ACTIVE</span>}
                   </td>
                   <td className="td-muted">{u.joined}</td>
-                  <td style={{ display: "flex", gap: ".4rem" }}>
+                  <td style={{ display: "flex", gap: ".4rem", flexWrap: "wrap", alignItems: "center" }}>
                     <button className="act-btn view" onClick={() => handleViewUser(u)}>View</button>
                     {u.status === "flagged"
                       ? <button className="act-btn delete" disabled={emergencyMode} style={blockedActionStyle} onClick={() => handleDeleteUser(u.id)}>Delete</button>
-                      : <button className={u.status === "suspended" ? "act-btn approve" : "act-btn suspend"} disabled={emergencyMode} style={blockedActionStyle} onClick={() => handleSuspendToggle(u.id)}>{u.status === "suspended" ? "Activate" : "Suspend"}</button>}
+                      : <button className={u.status === "suspended" ? "act-btn approve" : "act-btn suspend"} disabled={emergencyMode} style={blockedActionStyle} onClick={() => handleSuspendToggle(u.id)}>{u.status === "suspended" ? "Activate" : "Suspend & Delete"}</button>}
                   </td>
                 </tr>
               ))}
@@ -1333,7 +1351,7 @@ function AdminDash({ user, token }) {
                   <td className="td-muted">{p.seller}</td>
                   <td>{p.bid}</td>
                   <td className="td-muted">{p.cat}</td>
-                  <td style={{ display: "flex", gap: ".4rem" }}>
+                  <td style={{ display: "flex", gap: ".4rem", flexWrap: "wrap", alignItems: "center" }}>
                     <button className="act-btn approve" disabled={emergencyMode} style={blockedActionStyle} onClick={() => handleApproveAuction(p.id)}>Approve</button>
                     <button className="act-btn reject" disabled={emergencyMode} style={blockedActionStyle} onClick={() => handleRejectAuction(p.id)}>Reject</button>
                   </td>
@@ -1347,6 +1365,47 @@ function AdminDash({ user, token }) {
             </tbody>
           </table>
         </div>
+
+        {selectedUser && (
+          <div
+            onClick={() => setSelectedUser(null)}
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0, 0, 0, 0.55)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1000,
+              padding: "1rem",
+            }}
+          >
+            <div
+              onClick={(event) => event.stopPropagation()}
+              style={{
+                width: "min(100%, 520px)",
+                background: "var(--bg3)",
+                border: "1px solid var(--border)",
+                borderRadius: "14px",
+                padding: "1.15rem 1.2rem",
+                boxShadow: "0 16px 40px rgba(0,0,0,0.45)",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.9rem" }}>
+                <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: "1.1rem" }}>User Details</div>
+                <button className="act-btn view" onClick={() => setSelectedUser(null)}>Close</button>
+              </div>
+
+              <div style={{ display: "grid", gap: "0.65rem" }}>
+                <div><span className="td-muted">Name:</span> {selectedUser.name}</div>
+                <div><span className="td-muted">Email:</span> {selectedUser.email}</div>
+                <div><span className="td-muted">Role:</span> {selectedUser.role.toUpperCase()}</div>
+                <div><span className="td-muted">Status:</span> {selectedUser.status.toUpperCase()}</div>
+                <div><span className="td-muted">Joined:</span> {selectedUser.joined}</div>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

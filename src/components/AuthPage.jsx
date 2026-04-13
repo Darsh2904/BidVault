@@ -179,14 +179,9 @@ export default function AuthPage() {
     setMessage({ type: "", text: "" });
 
     try {
-      const data = await requestSignupOtp(signupData);
+      await requestSignupOtp(signupData);
       setOtpSent(true);
-      showMessage(
-        "success",
-        data.devOtp
-          ? `OTP sent. Dev OTP: ${data.devOtp}`
-          : "OTP sent to your email. Please verify to complete signup."
-      );
+      showMessage("success", "OTP sent to your email. Please verify to complete signup.");
     } catch (error) {
       showMessage("error", error.message);
     } finally {

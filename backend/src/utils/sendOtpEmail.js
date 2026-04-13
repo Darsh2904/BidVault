@@ -20,8 +20,14 @@ async function getTransporter() {
   if (transporter) return transporter;
 
   const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
+  const hasValidSmtp = Boolean(SMTP_HOST && SMTP_PORT && !hasPlaceholderCreds(SMTP_USER, SMTP_PASS));
 
-  if (!SMTP_HOST || !SMTP_PORT || hasPlaceholderCreds(SMTP_USER, SMTP_PASS)) {
+  if (!hasValidSmtp) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("SMTP is not configured. Set SMTP_HOST, SMTP_PORT, SMTP_USER and SMTP_PASS.");
+    }
+
+    console.warn("SMTP not configured, using dev OTP fallback (jsonTransport).");
     transporter = nodemailer.createTransport({ jsonTransport: true });
     return transporter;
   }
@@ -40,7 +46,23 @@ async function getTransporter() {
 }
 
 export async function sendOtpEmail(email, otp) {
-  const from = process.env.MAIL_FROM || "BidVault <no-reply@bidvault.local>";
+  const mailFrom = String(process.env.MAIL_FROM || "").trim();
+  const mailFromLower = mailFrom.toLowerCase();
+  const mailFromLooksInvalid =
+    !mailFrom ||
+    mailFromLower.includes("no-reply@bidvault.local") ||
+    mailFromLower.includes("@smtp-brevo.com");
+
+  const mailer = await getTransporter();
+
+  if (!mailer.options.jsonTransport && mailFromLooksInvalid) {
+    throw new Error(
+      "MAIL_FROM must be a verified sender email (for Brevo, do not use the @smtp-brevo.com login as From address)."
+    );
+  }
+
+  const from = mailFrom || "BidVault <no-reply@bidvault.local>";
+
   const mailOptions = {
     from,
     to: email,
@@ -56,8 +78,6 @@ export async function sendOtpEmail(email, otp) {
     `,
   };
 
-  const mailer = await getTransporter();
-
   try {
     const info = await mailer.sendMail(mailOptions);
 
@@ -66,13 +86,6 @@ export async function sendOtpEmail(email, otp) {
     }
     return;
   } catch (error) {
-    if (process.env.NODE_ENV === "production") {
-      throw error;
-    }
-
-    console.warn("SMTP failed, switching to dev OTP fallback:", error.message);
-    transporter = nodemailer.createTransport({ jsonTransport: true });
-    const fallbackInfo = await transporter.sendMail(mailOptions);
-    console.log("OTP email (dev fallback):", fallbackInfo.message);
+    throw new Error(`Failed to send OTP email: ${error.message}`);
   }
 }
