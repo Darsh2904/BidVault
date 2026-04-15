@@ -2,6 +2,11 @@ import nodemailer from "nodemailer";
 
 let transporter;
 
+const SMTP_CONNECTION_TIMEOUT_MS = Number(process.env.SMTP_CONNECTION_TIMEOUT_MS || 10000);
+const SMTP_SOCKET_TIMEOUT_MS = Number(process.env.SMTP_SOCKET_TIMEOUT_MS || 15000);
+const SMTP_GREETING_TIMEOUT_MS = Number(process.env.SMTP_GREETING_TIMEOUT_MS || 10000);
+const SMTP_SEND_TIMEOUT_MS = Number(process.env.SMTP_SEND_TIMEOUT_MS || 15000);
+
 function hasPlaceholderCreds(user, pass) {
   const normalizedUser = String(user || "").toLowerCase();
   const normalizedPass = String(pass || "").toLowerCase();
@@ -36,6 +41,9 @@ async function getTransporter() {
     host: SMTP_HOST,
     port: Number(SMTP_PORT),
     secure: Number(SMTP_PORT) === 465,
+    connectionTimeout: SMTP_CONNECTION_TIMEOUT_MS,
+    socketTimeout: SMTP_SOCKET_TIMEOUT_MS,
+    greetingTimeout: SMTP_GREETING_TIMEOUT_MS,
     auth: {
       user: SMTP_USER,
       pass: SMTP_PASS,
@@ -116,13 +124,21 @@ async function sendEmail({ to, subject, html }) {
   };
 
   try {
-    const info = await mailer.sendMail(mailOptions);
+    const sendPromise = mailer.sendMail(mailOptions);
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new Error("OTP email request timed out. Please verify SMTP settings and network connectivity."));
+      }, SMTP_SEND_TIMEOUT_MS);
+    });
+
+    const info = await Promise.race([sendPromise, timeoutPromise]);
 
     if (mailer.options.jsonTransport) {
       console.log("Email (dev fallback):", info.message);
     }
     return;
   } catch (error) {
+    transporter = null;
     throw new Error(`Failed to send OTP email: ${error.message}`);
   }
 }

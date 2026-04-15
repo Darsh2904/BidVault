@@ -1,4 +1,5 @@
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const OTP_REQUEST_TIMEOUT_MS = 20000;
 
 async function parseResponse(response) {
   const data = await response.json();
@@ -16,12 +17,28 @@ function authHeaders(token) {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+async function fetchWithTimeout(url, options = {}, timeoutMs = 15000) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      throw new Error("Request timed out. Please try again.");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 export async function requestSignupOtp(payload) {
-  const response = await fetch(`${API_BASE}/auth/signup/request-otp`, {
+  const response = await fetchWithTimeout(`${API_BASE}/auth/signup/request-otp`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
-  });
+  }, OTP_REQUEST_TIMEOUT_MS);
 
   return parseResponse(response);
 }
