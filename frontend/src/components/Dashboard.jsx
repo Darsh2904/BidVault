@@ -1116,6 +1116,24 @@ function AdminDash({ user, token }) {
     setSelectedUser(entry);
   };
 
+  const handleApproveAdminFromUsers = (entry) => {
+    if (entry.role !== "admin" || entry.isAdminApproved) return;
+
+    const isCurrentAdmin = String(entry.email || "").toLowerCase() === String(user?.email || "").toLowerCase();
+    if (isCurrentAdmin) return;
+
+    approveAdminRequest(entry.id, token)
+      .then(() => {
+        setUsers((prev) => prev.map((item) => (
+          item.id === entry.id
+            ? { ...item, isAdminApproved: true, status: "active" }
+            : item
+        )));
+        pushNotice(`Admin request approved for ${entry.name}.`);
+      })
+      .catch((error) => pushNotice(error.message));
+  };
+
   const handleSuspendToggle = (userId) => {
     const target = users.find((entry) => entry.id === userId);
     if (!target) return;
@@ -1313,7 +1331,9 @@ function AdminDash({ user, token }) {
                   <td className="td-muted">{u.email}</td>
                   <td><span className={`pill ${u.role === "admin" ? "admin" : "buyer"}`}>{u.role.toUpperCase()}</span></td>
                   <td>
-                    {u.status === "flagged"
+                    {u.role === "admin" && !u.isAdminApproved
+                      ? <span className="pill buyer">PENDING APPROVAL</span>
+                      : u.status === "flagged"
                       ? <span className="pill flagged">FLAGGED 🚨</span>
                       : u.status === "suspended"
                       ? <span className="pill ended">SUSPENDED</span>
@@ -1322,9 +1342,20 @@ function AdminDash({ user, token }) {
                   <td className="td-muted">{u.joined}</td>
                   <td style={{ display: "flex", gap: ".4rem", flexWrap: "wrap", alignItems: "center" }}>
                     <button className="act-btn view" onClick={() => handleViewUser(u)}>View</button>
-                    {u.status === "flagged"
-                      ? <button className="act-btn delete" disabled={emergencyMode} style={blockedActionStyle} onClick={() => handleDeleteUser(u.id)}>Delete</button>
-                      : <button className={u.status === "suspended" ? "act-btn approve" : "act-btn suspend"} disabled={emergencyMode} style={blockedActionStyle} onClick={() => handleSuspendToggle(u.id)}>{u.status === "suspended" ? "Activate" : "Suspend & Delete"}</button>}
+                    {u.role === "admin" ? (
+                      !u.isAdminApproved && String(u.email || "").toLowerCase() !== String(user?.email || "").toLowerCase() ? (
+                        <>
+                          <button className="act-btn approve" disabled={emergencyMode} style={blockedActionStyle} onClick={() => handleApproveAdminFromUsers(u)}>Accept</button>
+                          <button className="act-btn delete" disabled={emergencyMode} style={blockedActionStyle} onClick={() => handleDeleteUser(u.id)}>Delete</button>
+                        </>
+                      ) : (
+                        <span className="td-muted" style={{ fontSize: ".8rem" }}>No action</span>
+                      )
+                    ) : u.status === "flagged" ? (
+                      <button className="act-btn delete" disabled={emergencyMode} style={blockedActionStyle} onClick={() => handleDeleteUser(u.id)}>Delete</button>
+                    ) : (
+                      <button className={u.status === "suspended" ? "act-btn approve" : "act-btn suspend"} disabled={emergencyMode} style={blockedActionStyle} onClick={() => handleSuspendToggle(u.id)}>{u.status === "suspended" ? "Activate" : "Suspend & Delete"}</button>
+                    )}
                   </td>
                 </tr>
               ))}

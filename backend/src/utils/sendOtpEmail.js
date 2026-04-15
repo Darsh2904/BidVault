@@ -46,6 +46,51 @@ async function getTransporter() {
 }
 
 export async function sendOtpEmail(email, otp) {
+  const subject = "BidVault OTP Verification";
+  const html = `
+      <div style="font-family:Arial,sans-serif;line-height:1.5;max-width:540px">
+        <h2>Verify your BidVault account</h2>
+        <p>Your one-time password is:</p>
+        <div style="font-size:28px;font-weight:700;letter-spacing:4px;margin:12px 0">${otp}</div>
+        <p>This OTP expires in 10 minutes.</p>
+        <p>If you did not request this, you can safely ignore this email.</p>
+      </div>
+    `;
+
+  await sendEmail({ to: email, subject, html });
+}
+
+export async function sendAdminApprovalEmail(email, name = "there") {
+  const subject = "BidVault accepted your admin request";
+  const html = `
+      <div style="font-family:Arial,sans-serif;line-height:1.6;max-width:560px">
+        <h2 style="margin-bottom:12px;">Congratulations ${name},</h2>
+        <p>Your admin request has been approved by BidVault.</p>
+        <p>You can now log in from the login page and access the admin dashboard.</p>
+        <p style="margin-top:16px;"><b>Next Step:</b> Open BidVault and sign in with your registered email and password.</p>
+        <p style="margin-top:20px;">Regards,<br/>BidVault Team</p>
+      </div>
+    `;
+
+  await sendEmail({ to: email, subject, html });
+}
+
+export async function sendWelcomeEmail(email, name = "there") {
+  const subject = "Welcome to BidVault";
+  const html = `
+      <div style="font-family:Arial,sans-serif;line-height:1.6;max-width:560px">
+        <h2 style="margin-bottom:12px;">Welcome ${name},</h2>
+        <p>Your BidVault account is now active and ready to use.</p>
+        <p>You can now sign in, explore auctions, and start bidding or listing items.</p>
+        <p style="margin-top:16px;"><b>Tip:</b> Complete your profile and enable notifications for a better auction experience.</p>
+        <p style="margin-top:20px;">Regards,<br/>BidVault Team</p>
+      </div>
+    `;
+
+  await sendEmail({ to: email, subject, html });
+}
+
+async function sendEmail({ to, subject, html }) {
   const mailFrom = String(process.env.MAIL_FROM || "").trim();
   const mailFromLower = mailFrom.toLowerCase();
   const mailFromLooksInvalid =
@@ -65,24 +110,16 @@ export async function sendOtpEmail(email, otp) {
 
   const mailOptions = {
     from,
-    to: email,
-    subject: "BidVault OTP Verification",
-    html: `
-      <div style="font-family:Arial,sans-serif;line-height:1.5;max-width:540px">
-        <h2>Verify your BidVault account</h2>
-        <p>Your one-time password is:</p>
-        <div style="font-size:28px;font-weight:700;letter-spacing:4px;margin:12px 0">${otp}</div>
-        <p>This OTP expires in 10 minutes.</p>
-        <p>If you did not request this, you can safely ignore this email.</p>
-      </div>
-    `,
+    to,
+    subject,
+    html,
   };
 
   try {
     const info = await mailer.sendMail(mailOptions);
 
     if (mailer.options.jsonTransport) {
-      console.log("OTP email (dev fallback):", info.message);
+      console.log("Email (dev fallback):", info.message);
     }
     return;
   } catch (error) {

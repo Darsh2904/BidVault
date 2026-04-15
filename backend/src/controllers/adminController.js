@@ -20,6 +20,7 @@ function userDto(user) {
     email: user.email,
     role: user.role === "admin" ? "admin" : "buyer/seller",
     status: user.status || "active",
+    isAdminApproved: Boolean(user.isAdminApproved),
     joined: formatJoinedDate(user.createdAt),
   };
 }
@@ -65,18 +66,20 @@ export async function getAdminUsers(req, res) {
   }
 }
 
-async function deleteUserAndRelatedData({ target, blockedBy, reason }) {
+async function deleteUserAndRelatedData({ target, blockedBy, reason, shouldBlockEmail = true }) {
   const normalizedEmail = String(target.email || "").toLowerCase();
 
-  await BlockedEmail.findOneAndUpdate(
-    { email: normalizedEmail },
-    {
-      email: normalizedEmail,
-      reason: reason || "Blocked due to suspicious activity",
-      blockedBy: blockedBy || "admin",
-    },
-    { upsert: true, new: true, setDefaultsOnInsert: true }
-  );
+  if (shouldBlockEmail) {
+    await BlockedEmail.findOneAndUpdate(
+      { email: normalizedEmail },
+      {
+        email: normalizedEmail,
+        reason: reason || "Blocked due to suspicious activity",
+        blockedBy: blockedBy || "admin",
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+  }
 
   await Notification.deleteMany({
     $or: [{ recipientUser: target._id }, { recipientEmail: normalizedEmail }],
@@ -147,18 +150,30 @@ export async function deleteAndBlockUser(req, res) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    if (target.role === "admin") {
-      return res.status(400).json({ message: "Admin account cannot be deleted from this action" });
+    if (target.email.toLowerCase() === PERMANENT_ADMIN.email.toLowerCase()) {
+      return res.status(400).json({ message: "Permanent admin account cannot be deleted" });
     }
 
+    if (String(target._id) === String(req.user?._id)) {
+      return res.status(400).json({ message: "You cannot delete your own admin account" });
+    }
+
+    if (target.role === "admin" && target.isAdminApproved) {
+      return res.status(400).json({ message: "Approved admin account cannot be deleted from this action" });
+    }
+
+    const shouldBlockEmail = target.role !== "admin";
     const blockedEmail = await deleteUserAndRelatedData({
       target,
       blockedBy: req.user?.email,
-      reason: "Blocked due to suspicious activity",
+      reason: shouldBlockEmail ? "Blocked due to suspicious activity" : "Pending admin request removed by admin",
+      shouldBlockEmail,
     });
 
     return res.status(200).json({
-      message: "User deleted and email blocked permanently",
+      message: shouldBlockEmail
+        ? "User deleted and email blocked permanently"
+        : "Pending admin account deleted successfully",
       blockedEmail,
     });
   } catch (error) {

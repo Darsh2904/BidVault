@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import User from "../models/User.js";
 import BlockedEmail from "../models/BlockedEmail.js";
 import { signToken } from "../utils/token.js";
-import { sendOtpEmail } from "../utils/sendOtpEmail.js";
+import { sendAdminApprovalEmail, sendOtpEmail, sendWelcomeEmail } from "../utils/sendOtpEmail.js";
 
 function normalizeRole(inputRole) {
   return inputRole === "admin" ? "admin" : "buyer_seller";
@@ -196,6 +196,16 @@ export async function login(req, res) {
       return res.status(403).json({ message: "Account access is restricted. Please contact support." });
     }
 
+    if (!user.welcomeEmailSent) {
+      try {
+        await sendWelcomeEmail(user.email, user.name);
+        user.welcomeEmailSent = true;
+        await user.save();
+      } catch (mailError) {
+        console.warn("Failed to send welcome email:", mailError.message);
+      }
+    }
+
     const token = signToken({ userId: user._id, role: user.role });
 
     return res.status(200).json({
@@ -243,6 +253,12 @@ export async function approveAdminRequest(req, res) {
 
     targetUser.isAdminApproved = true;
     await targetUser.save();
+
+    try {
+      await sendAdminApprovalEmail(targetUser.email, targetUser.name);
+    } catch (mailError) {
+      console.warn("Failed to send admin approval email:", mailError.message);
+    }
 
     return res.status(200).json({
       message: "Admin request approved",
