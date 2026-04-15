@@ -114,22 +114,24 @@ export async function updateAdminUserStatus(req, res) {
       return res.status(400).json({ message: "Permanent admin status cannot be changed" });
     }
 
+    if (String(target._id) === String(req.user?._id) && status === "suspended") {
+      return res.status(400).json({ message: "You cannot suspend your own admin account" });
+    }
+
     if (status === "suspended") {
-      if (target.role === "admin") {
-        return res.status(400).json({ message: "Admin account cannot be suspended from this action" });
+      if (target.role !== "admin") {
+        const blockedEmail = await deleteUserAndRelatedData({
+          target,
+          blockedBy: req.user?.email,
+          reason: "Blocked due to suspension by admin",
+        });
+
+        return res.status(200).json({
+          message: "User suspended and deleted permanently",
+          deletedUserId: String(userId),
+          blockedEmail,
+        });
       }
-
-      const blockedEmail = await deleteUserAndRelatedData({
-        target,
-        blockedBy: req.user?.email,
-        reason: "Blocked due to suspension by admin",
-      });
-
-      return res.status(200).json({
-        message: "User suspended and deleted permanently",
-        deletedUserId: String(userId),
-        blockedEmail,
-      });
     }
 
     target.status = status;
@@ -156,10 +158,6 @@ export async function deleteAndBlockUser(req, res) {
 
     if (String(target._id) === String(req.user?._id)) {
       return res.status(400).json({ message: "You cannot delete your own admin account" });
-    }
-
-    if (target.role === "admin" && target.isAdminApproved) {
-      return res.status(400).json({ message: "Approved admin account cannot be deleted from this action" });
     }
 
     const shouldBlockEmail = target.role !== "admin";

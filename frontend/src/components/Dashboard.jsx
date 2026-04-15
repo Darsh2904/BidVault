@@ -1139,8 +1139,14 @@ function AdminDash({ user, token }) {
     if (!target) return;
 
     const nextStatus = target.status === "suspended" ? "active" : "suspended";
+    const isAdminAccount = target.role === "admin";
 
-    if (nextStatus === "suspended") {
+    if (isAdminAccount && nextStatus === "suspended") {
+      const confirmed = window.confirm(`Suspend ${target.name}? This admin will not be able to log in until re-activated.`);
+      if (!confirmed) return;
+    }
+
+    if (!isAdminAccount && nextStatus === "suspended") {
       const confirmed = window.confirm(
         `Suspend ${target.name}? This will permanently delete the user account and related data.`
       );
@@ -1167,10 +1173,10 @@ function AdminDash({ user, token }) {
 
   const handleDeleteUser = (userId) => {
     deleteAndBlockUser(userId, token)
-      .then(() => {
+      .then((data) => {
         setUsers((prev) => prev.filter((entry) => entry.id !== userId));
         setFraudAlerts((prev) => Math.max(prev - 1, 0));
-        pushNotice("User deleted and email blocked.");
+        pushNotice(data?.message || "User deleted.");
       })
       .catch((error) => pushNotice(error.message));
   };
@@ -1331,21 +1337,24 @@ function AdminDash({ user, token }) {
                   <td className="td-muted">{u.email}</td>
                   <td><span className={`pill ${u.role === "admin" ? "admin" : "buyer"}`}>{u.role.toUpperCase()}</span></td>
                   <td>
-                    {u.role === "admin" && !u.isAdminApproved
-                      ? <span className="pill buyer">PENDING APPROVAL</span>
-                      : u.status === "flagged"
+                    {u.status === "flagged"
                       ? <span className="pill flagged">FLAGGED 🚨</span>
                       : u.status === "suspended"
                       ? <span className="pill ended">SUSPENDED</span>
+                      : u.role === "admin" && !u.isAdminApproved
+                      ? <span className="pill buyer">PENDING APPROVAL</span>
                       : <span className="pill active-s">ACTIVE</span>}
                   </td>
                   <td className="td-muted">{u.joined}</td>
                   <td style={{ display: "flex", gap: ".4rem", flexWrap: "wrap", alignItems: "center" }}>
                     <button className="act-btn view" onClick={() => handleViewUser(u)}>View</button>
                     {u.role === "admin" ? (
-                      !u.isAdminApproved && String(u.email || "").toLowerCase() !== String(user?.email || "").toLowerCase() ? (
+                      String(u.email || "").toLowerCase() !== String(user?.email || "").toLowerCase() ? (
                         <>
-                          <button className="act-btn approve" disabled={emergencyMode} style={blockedActionStyle} onClick={() => handleApproveAdminFromUsers(u)}>Accept</button>
+                          {!u.isAdminApproved && (
+                            <button className="act-btn approve" disabled={emergencyMode} style={blockedActionStyle} onClick={() => handleApproveAdminFromUsers(u)}>Accept</button>
+                          )}
+                          <button className={u.status === "suspended" ? "act-btn approve" : "act-btn suspend"} disabled={emergencyMode} style={blockedActionStyle} onClick={() => handleSuspendToggle(u.id)}>{u.status === "suspended" ? "Activate" : "Suspend"}</button>
                           <button className="act-btn delete" disabled={emergencyMode} style={blockedActionStyle} onClick={() => handleDeleteUser(u.id)}>Delete</button>
                         </>
                       ) : (
