@@ -49,6 +49,41 @@ function durationToTimer(duration) {
   return map[duration] || "7d";
 }
 
+function durationToMilliseconds(duration) {
+  const map = {
+    "24 Hours": 24 * 60 * 60 * 1000,
+    "3 Days": 3 * 24 * 60 * 60 * 1000,
+    "5 Days": 5 * 24 * 60 * 60 * 1000,
+    "7 Days": 7 * 24 * 60 * 60 * 1000,
+  };
+
+  return map[duration] || map["7 Days"];
+}
+
+function computeAuctionEndAt(duration, fromDate = new Date()) {
+  return new Date(new Date(fromDate).getTime() + durationToMilliseconds(duration));
+}
+
+async function createUserNotification({ recipientUserId = null, recipientEmail, type = "info", message, metadata = {} }) {
+  if (!recipientEmail) return;
+
+  const normalizedEmail = String(recipientEmail).toLowerCase();
+  let resolvedRecipientUser = recipientUserId;
+
+  if (!resolvedRecipientUser) {
+    const user = await User.findOne({ email: normalizedEmail }).select("_id");
+    resolvedRecipientUser = user?._id || null;
+  }
+
+  await Notification.create({
+    recipientUser: resolvedRecipientUser,
+    recipientEmail: normalizedEmail,
+    type,
+    message,
+    metadata,
+  });
+}
+
 function sanitizeImages(rawImages) {
   if (!Array.isArray(rawImages)) return [];
 
@@ -189,11 +224,8 @@ export async function getPendingAuctionListings(req, res) {
 }
 
 async function notifySeller(auction, type, message) {
-  const sellerUser = await User.findOne({ email: auction.sellerEmail.toLowerCase() });
-
-  await Notification.create({
-    recipientUser: sellerUser?._id || null,
-    recipientEmail: auction.sellerEmail.toLowerCase(),
+  await createUserNotification({
+    recipientEmail: auction.sellerEmail,
     type,
     message,
     metadata: {
@@ -353,6 +385,8 @@ export async function createAuctionListing(req, res) {
       return res.status(400).json({ message: "Only valid image files are allowed" });
     }
 
+    const normalizedDuration = String(duration || "7 Days");
+
     const listing = await AuctionListing.create({
       title: String(title).trim(),
       description: String(description || "").trim(),
@@ -362,14 +396,50 @@ export async function createAuctionListing(req, res) {
       currentBid: parsedStartingBid,
       reservePrice: parsedReservePrice,
       category: String(category).trim(),
-      duration: String(duration || "7 Days"),
+      duration: normalizedDuration,
+      endAt: computeAuctionEndAt(normalizedDuration),
       condition: String(condition || "Excellent"),
       images: safeImages,
-      timer: durationToTimer(String(duration)),
-      urgent: String(duration) === "24 Hours",
+      timer: durationToTimer(normalizedDuration),
+      urgent: normalizedDuration === "24 Hours",
       live: true,
       status: "approved",
     });
+
+    await createUserNotification({
+      recipientUserId: req.user?._id || null,
+      recipientEmail: req.user?.email,
+      type: "auction_listed",
+      message: `Your auction "${listing.title}" is now listed and live.` ,
+      metadata: {
+        auctionId: String(listing._id),
+        auctionTitle: listing.title,
+      },
+    });
+
+    const activeAdmins = await User.find({
+      role: "admin",
+      isAdminApproved: true,
+      status: "active",
+    }).select("_id email");
+
+    await Promise.all(
+      activeAdmins
+        .filter((admin) => String(admin.email || "").toLowerCase() !== String(req.user?.email || "").toLowerCase())
+        .map((admin) =>
+          createUserNotification({
+            recipientUserId: admin._id,
+            recipientEmail: admin.email,
+            type: "auction_listed",
+            message: `${req.user?.name || "A seller"} listed a new auction: "${listing.title}".`,
+            metadata: {
+              auctionId: String(listing._id),
+              auctionTitle: listing.title,
+              sellerEmail: listing.sellerEmail,
+            },
+          })
+        )
+    );
 
     return res.status(201).json({
       message: "Auction published successfully",

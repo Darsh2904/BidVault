@@ -15,7 +15,15 @@ const notificationSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ["info", "auction_approved", "auction_rejected"],
+      enum: [
+        "info",
+        "auction_approved",
+        "auction_rejected",
+        "auction_listed",
+        "auction_ending_soon",
+        "auction_ended",
+        "bid_won",
+      ],
       default: "info",
     },
     message: {

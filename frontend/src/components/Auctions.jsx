@@ -206,6 +206,40 @@ const styles = `
     animation:toastIn .3s ease;
   }
   @keyframes toastIn { from{opacity:0;transform:translateX(-50%) translateY(20px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+
+  @media (max-width: 1024px) {
+    .navbar { padding: 0 1rem; }
+    .nav-links { display: none; }
+    .page { padding: 1.5rem 1rem 2rem; gap: 1.5rem; }
+  }
+
+  @media (max-width: 768px) {
+    .nav-right { gap: 0.45rem; flex-wrap: wrap; justify-content: flex-end; }
+    .nav-icon-btn.notif,
+    .nav-right .btn-outline { display: none; }
+    .btn-primary { padding: 0.35rem 0.65rem; font-size: 0.75rem; }
+    .main-img { font-size: 6.2rem; }
+    .thumbs { overflow-x: auto; padding-bottom: 0.35rem; }
+    .thumb { width: 72px; height: 72px; font-size: 1.6rem; }
+    .countdown-box { gap: 1rem; padding: 1rem; }
+    .count-num { font-size: 2rem; }
+    .count-sep { font-size: 1.6rem; }
+    .bid-input-row { flex-direction: column; }
+    .place-bid-btn { width: 100%; justify-content: center; }
+    .secondary-row,
+    .specs-grid,
+    .modal-btns { grid-template-columns: 1fr; }
+    .tabs { overflow-x: auto; white-space: nowrap; }
+    .tab-btn { flex: 0 0 auto; }
+    .modal { padding: 1.25rem; }
+  }
+
+  @media (max-width: 480px) {
+    .item-title { font-size: 1.55rem; }
+    .bid-amount { font-size: 2.4rem; }
+    .seller-row { font-size: 0.82rem; }
+    .toast { width: calc(100% - 1.5rem); left: 0.75rem; right: 0.75rem; transform: none; justify-content: center; }
+  }
 `;
 
 const thumbs = ["🎸","📷","🎵","📦"];

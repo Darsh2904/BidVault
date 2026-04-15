@@ -307,14 +307,36 @@ const styles = `
   .footer-legal a:hover { color: var(--purple-light); }
   .footer-legal span { color: var(--border); font-size: 0.8rem; }
 
-  @media (max-width: 768px) {
+  @media (max-width: 1024px) {
     body { zoom: 1; }
-    .nav-links { display: none; }
-    .footer-top { grid-template-columns: 1fr 1fr; }
-    .stats { gap: 2rem; }
+    .navbar { padding: 0 1rem; }
+    .hero { padding: 5rem 1rem 3.5rem; }
+    .section { padding: 3rem 1rem; }
+    .section-alt { padding: 3rem 1rem; }
+    .footer { padding: 2.25rem 1rem; }
   }
+
+  @media (max-width: 768px) {
+    .nav-links { display: none; }
+    .nav-right { gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; }
+    .nav-icon-btn.notif,
+    .nav-right .btn-outline { display: none; }
+    .btn-primary { padding: 0.35rem 0.7rem; font-size: 0.76rem; }
+    .hero-ctas { width: 100%; }
+    .cta-start,
+    .cta-sell { width: 100%; justify-content: center; }
+    .stats { gap: 1.25rem; padding: 2rem 1rem; }
+    .section-sub { margin-bottom: 2rem; }
+    .footer-top { grid-template-columns: 1fr 1fr; }
+  }
+
   @media (max-width: 480px) {
+    .hero { padding: 4.5rem 1rem 3rem; }
+    .hero-title { letter-spacing: -1px; }
+    .categories-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .auctions-grid { grid-template-columns: 1fr; }
     .footer-top { grid-template-columns: 1fr; }
+    .footer-bottom { justify-content: center; text-align: center; }
   }
 `;
 

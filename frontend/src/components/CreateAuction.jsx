@@ -317,6 +317,11 @@ const styles = `
     line-height: 1.35;
   }
 
+  @media (max-width: 1024px) {
+    .nav { padding: 0 1rem; }
+    .page { width: min(860px, 100% - 1.25rem); }
+  }
+
   @media (max-width: 900px) {
     .links { display: none; }
     .grid, .actions { grid-template-columns: 1fr; }
@@ -324,6 +329,24 @@ const styles = `
     .upload-title { font-size: 0.95rem; }
     .upload-sub { font-size: 0.8rem; }
     .card { padding: 0.9rem; }
+  }
+
+  @media (max-width: 640px) {
+    .nav { min-height: 64px; height: auto; padding: 0.55rem 0.8rem; gap: 0.55rem; }
+    .nav-right { gap: 0.45rem; flex-wrap: wrap; justify-content: flex-end; }
+    .nav-right .btn-outline,
+    .nav-right .icon-btn:nth-of-type(2) { display: none; }
+    .btn.primary { padding: 0 0.8rem; font-size: 0.82rem; }
+    .top-row { flex-wrap: wrap; align-items: center; }
+    .upload-box { min-height: 155px; }
+    .upload-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+
+  @media (max-width: 480px) {
+    .page { width: calc(100% - 0.9rem); margin: 0.75rem auto 1.5rem; }
+    .title { font-size: 1.45rem; }
+    .card { padding: 0.8rem; }
+    .upload-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
 `;
 

@@ -256,6 +256,33 @@ const styles = `
     color:#fff; border-radius:10px; font-weight:700; cursor:pointer; transition:background 0.2s;
     display:flex; align-items:center; justify-content:center; gap:6px; }
   .btn-confirm:hover { background:var(--purple-light); }
+
+  @media (max-width: 1100px) {
+    .navbar { padding: 0 1rem; }
+    .nav-links { display: none; }
+  }
+
+  @media (max-width: 768px) {
+    .navbar { min-height: 64px; height: auto; padding: 0.55rem 0.8rem; gap: 0.6rem; }
+    .nav-right { gap: 0.45rem; flex-wrap: wrap; justify-content: flex-end; }
+    .nav-icon-btn.notif,
+    .nav-right .btn-outline { display: none; }
+    .btn-primary { padding: 0.35rem 0.65rem; font-size: 0.75rem; }
+    .browse-layout { padding: 0 0.8rem 2rem; gap: 1rem; }
+    .main-content { padding-top: 1rem; }
+    .top-bar { flex-direction: column; align-items: flex-start; gap: 0.65rem; }
+    .sort-btns { width: 100%; }
+    .sort-btn { flex: 1 1 calc(50% - 0.5rem); text-align: center; }
+    .modal { padding: 1.25rem; width: calc(100% - 1.25rem); }
+    .modal-actions { flex-direction: column; }
+  }
+
+  @media (max-width: 480px) {
+    .auctions-grid { grid-template-columns: 1fr; gap: 1rem; }
+    .card-img { height: 175px; font-size: 3rem; }
+    .card-body { padding: 1rem; }
+    .search-input { font-size: 0.9rem; }
+  }
 `;
 
 const staticAuctions = [

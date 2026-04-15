@@ -146,6 +146,18 @@ const pageStyles = `
     color: #8ff0cc;
     border: 1px solid rgba(0, 196, 140, 0.3);
   }
+
+  @media (max-width: 640px) {
+    .auth-page { padding: 1.25rem 0.8rem; }
+    .auth-card { border-radius: 14px; padding: 1.1rem; }
+    .auth-brand { font-size: 1.45rem; margin-bottom: 1rem; }
+    .auth-title { font-size: 1.15rem; }
+    .auth-sub { font-size: 0.84rem; margin-bottom: 0.85rem; }
+    .auth-tab { padding: 0.5rem 0.55rem; font-size: 0.85rem; }
+    .auth-input,
+    .auth-select,
+    .auth-btn { font-size: 0.9rem; }
+  }
 `;
 
 const initialSignup = {

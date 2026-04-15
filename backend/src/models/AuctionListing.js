@@ -48,6 +48,11 @@ const auctionListingSchema = new mongoose.Schema(
       default: "7 Days",
       trim: true,
     },
+    endAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
     condition: {
       type: String,
       default: "Excellent",
