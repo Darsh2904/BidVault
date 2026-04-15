@@ -150,4 +150,3 @@ Built by Darsh Patel and contributors as a practical MERN project focused on tru
 
 # License
 This project is licensed under the MIT License. See LICENSE for details.
-
