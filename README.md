@@ -148,3 +148,6 @@ Improved audit logs for payment and state transitions
 # Author
 Built by Darsh Patel and contributors as a practical MERN project focused on trust-first auctions.
 
+# License
+This project is licensed under the MIT License. See LICENSE for details.
+
