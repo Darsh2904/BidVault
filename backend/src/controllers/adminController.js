@@ -345,6 +345,10 @@ export async function getMyAuctionListings(req, res) {
 
 export async function createAuctionListing(req, res) {
   try {
+    if (!req.user?._id || !req.user?.email) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
     const {
       title,
       description,
@@ -410,7 +414,7 @@ export async function createAuctionListing(req, res) {
       recipientUserId: req.user?._id || null,
       recipientEmail: req.user?.email,
       type: "auction_listed",
-      message: `Your auction "${listing.title}" is now listed and live.` ,
+      message: `Your auction "${listing.title}" is now listed and live.`,
       metadata: {
         auctionId: String(listing._id),
         auctionTitle: listing.title,

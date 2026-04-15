@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import AuthNavActions from "./AuthNavActions";
 import { useTheme } from "../context/ThemeContext";
+import { useAuth } from "../context/AuthContext";
 
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
@@ -267,6 +268,8 @@ function useCountdown(h, m, s) {
 
 export default function AuctionPage() {
   const { theme, toggleTheme } = useTheme();
+  const { isAuthenticated, token } = useAuth();
+  const navigate = useNavigate();
   const [activeThumb, setActiveThumb] = useState(0);
   const [activeTab, setActiveTab] = useState("description");
   const [bidVal, setBidVal] = useState("");
@@ -274,16 +277,27 @@ export default function AuctionPage() {
   const [modalBid, setModalBid] = useState("48650");
   const [watched, setWatched] = useState(false);
   const [toast, setToast] = useState(false);
+  const [actionError, setActionError] = useState("");
   const [showBellToast, setShowBellToast] = useState(false);
   const [hh, mm, ss] = useCountdown(0, 25, 23);
   const isLightTheme = theme === "light";
 
+  const requireLogin = () => {
+    if (isAuthenticated && token) return true;
+    setActionError("Please login to place a bid.");
+    setTimeout(() => setActionError(""), 3500);
+    navigate("/auth");
+    return false;
+  };
+
   const openModal = () => {
+    if (!requireLogin()) return;
     setModalBid(bidVal || "48650");
     setShowModal(true);
   };
 
   const confirmBid = () => {
+    if (!requireLogin()) return;
     setShowModal(false);
     setBidVal("");
     setToast(true);
@@ -375,6 +389,21 @@ export default function AuctionPage() {
               value={bidVal} onChange={e => setBidVal(e.target.value)} />
             <button className="place-bid-btn" onClick={openModal}>🔨 Place Bid</button>
           </div>
+          {actionError && (
+            <div
+              style={{
+                marginBottom: "0.8rem",
+                borderRadius: "10px",
+                padding: "0.55rem 0.75rem",
+                fontSize: "0.78rem",
+                border: "1px solid rgba(255, 68, 68, 0.45)",
+                background: "rgba(255, 68, 68, 0.12)",
+                color: "#ff9c9c",
+              }}
+            >
+              {actionError}
+            </div>
+          )}
 
           {/* Watch / Share */}
           <div className="secondary-row">

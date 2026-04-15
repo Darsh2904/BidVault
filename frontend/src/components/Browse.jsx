@@ -378,19 +378,33 @@ export default function BrowsePage() {
     setApprovedAuctions((current) => current.filter((item) => String(item.id) !== String(auctionId)));
   };
 
+  const requireLoginForAction = (message) => {
+    if (isAuthenticated && token) return true;
+    showPaymentNotice("error", message || "Please login to continue.");
+    navigate("/auth");
+    return false;
+  };
+
   // If viewing a specific auction detail
   if (id) {
     const auction = allAuctions.find(a => String(a.id) === String(id));
     if (!auction) return <div>Auction not found</div>;
     
     const openBidModal = (auc) => {
+      if (!requireLoginForAction("Please login to place a bid.")) return;
       const currentBidNum = parseInt(auc.bid.replace(/[₹$,]/g, ""));
       setBidAmount(currentBidNum + 1000);
       setShowModal(true);
     };
 
     const closeBidModal = () => { setShowModal(false); setBidAmount(""); };
-    const handleConfirmBid = () => { if (bidAmount && auction) { alert(`Bid confirmed for ₹${bidAmount} on ${auction.title}`); closeBidModal(); } };
+    const handleConfirmBid = () => {
+      if (!requireLoginForAction("Please login to place a bid.")) return;
+      if (bidAmount && auction) {
+        alert(`Bid confirmed for ₹${bidAmount} on ${auction.title}`);
+        closeBidModal();
+      }
+    };
     const canProcessEscrow = isMongoId(auction.id);
 
     const handleEscrowPayment = async () => {
@@ -640,6 +654,7 @@ export default function BrowsePage() {
   const toggleFav = id => setFavs(p => ({ ...p, [id]: !p[id] }));
 
   const openBidModal = (auction) => {
+    if (!requireLoginForAction("Please login to place a bid.")) return;
     setSelectedAuction(auction);
     const currentBidNum = parseInt(auction.bid.replace(/[₹$,]/g, ""));
     setBidAmount(currentBidNum + 1000);
@@ -653,6 +668,7 @@ export default function BrowsePage() {
   };
 
   const handleConfirmBid = () => {
+    if (!requireLoginForAction("Please login to place a bid.")) return;
     if (bidAmount && selectedAuction) {
       alert(`Bid confirmed for ₹${bidAmount} on ${selectedAuction.title}`);
       closeBidModal();

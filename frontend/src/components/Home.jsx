@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import AuthNavActions from "./AuthNavActions";
 import { getApprovedAuctions } from "../utils/authApi";
 import { useTheme } from "../context/ThemeContext";
+import { useAuth } from "../context/AuthContext";
 
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
@@ -363,7 +364,9 @@ export default function BidVault() {
   const [showBellToast, setShowBellToast] = useState(false);
   const [liveAuctionsCount, setLiveAuctionsCount] = useState(null);
   const [liveCountError, setLiveCountError] = useState(false);
+  const [actionError, setActionError] = useState("");
   const { theme, toggleTheme } = useTheme();
+  const { isAuthenticated, token } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -400,6 +403,24 @@ export default function BidVault() {
     setShowBellToast(true);
     setTimeout(() => setShowBellToast(false), 4500);
   };
+
+  const requireLogin = (message) => {
+    if (isAuthenticated && token) return true;
+    setActionError(message);
+    setTimeout(() => setActionError(""), 3500);
+    navigate("/auth");
+    return false;
+  };
+
+  const handleStartBidding = () => {
+    if (!requireLogin("Please login to start bidding.")) return;
+    navigate("/browse");
+  };
+
+  const handleSellItem = () => {
+    if (!requireLogin("Please login to sell an item.")) return;
+    navigate("/create-auction");
+  };
   const isLightTheme = theme === "light";
 
   return (
@@ -435,9 +456,24 @@ export default function BidVault() {
           Join the world's most trusted e-auction platform. Discover rare finds, sell your treasures, and bid with total confidence.
         </p>
         <div className="hero-ctas">
-          <button className="cta-start" onClick={() => navigate("/browse")}>🔥 Start Bidding</button>
-          <button className="cta-sell" onClick={() => navigate("/create-auction")}>💎 Sell an Item</button>
+          <button className="cta-start" onClick={handleStartBidding}>🔥 Start Bidding</button>
+          <button className="cta-sell" onClick={handleSellItem}>💎 Sell an Item</button>
         </div>
+        {actionError && (
+          <div
+            style={{
+              marginTop: "1rem",
+              borderRadius: "10px",
+              padding: "0.6rem 0.9rem",
+              fontSize: "0.83rem",
+              border: "1px solid rgba(255, 68, 68, 0.45)",
+              background: "rgba(255, 68, 68, 0.12)",
+              color: "#ff9c9c",
+            }}
+          >
+            {actionError}
+          </div>
+        )}
       </section>
 
       {/* STATS */}
@@ -480,7 +516,15 @@ export default function BidVault() {
                       ⏱ {a.timer}
                     </div>
                   </div>
-                  <button className="card-btn">🔨 Place Bid</button>
+                  <button
+                    className="card-btn"
+                    onClick={() => {
+                      if (!requireLogin("Please login to place a bid.")) return;
+                      navigate(`/auctions/${a.id}`);
+                    }}
+                  >
+                    🔨 Place Bid
+                  </button>
                 </div>
               </div>
             ))}
