@@ -61,10 +61,10 @@ Frontend:
 -Escrow transaction tracking
 
 # Project Structure
--src: frontend app code
--src/components: pages and major UI views
--src/context: authentication and theme context providers
--src/utils: frontend API helper layer
+-frontend/src: frontend app code
+-frontend/src/components: pages and major UI views
+-frontend/src/context: authentication and theme context providers
+-frontend/src/utils: frontend API helper layer
 -backend/src/controllers: backend request handlers
 -backend/src/models: MongoDB schemas
 -backend/src/routes: API route definitions
@@ -77,7 +77,8 @@ Frontend:
 -Razorpay account for payment testing
 
 # Install Dependencies 
-At project root:
+In frontend folder:
+cd frontend
 npm install
 
 In backend folder:
@@ -106,6 +107,7 @@ RAZORPAY_WEBHOOK_SECRET
 
 # Run the App
 Frontend:
+cd frontend
 npm run dev
 
 Backend:
