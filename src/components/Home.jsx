@@ -464,7 +464,7 @@ export default function BidVault() {
             ))}
           </div>
           <div style={{ textAlign: "center", marginTop: "2.5rem" }}>
-            <button className="cta-sell" style={{ display: "inline-flex" }}>View All Auctions →</button>
+            <button className="cta-sell" style={{ display: "inline-flex" }} onClick={() => navigate("/browse")}>View All Auctions →</button>
           </div>
         </div>
       </div>
