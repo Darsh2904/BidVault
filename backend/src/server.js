@@ -14,22 +14,54 @@ import paymentRoutes from "./routes/paymentRoutes.js";
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-const allowedOrigins = new Set([
+function parseOriginList(value = "") {
+  return String(value)
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
+const configuredOrigins = new Set([
   process.env.CLIENT_URL || "http://localhost:5173",
+  ...parseOriginList(process.env.CLIENT_URLS),
 ]);
+
+const hasConfiguredVercelOrigin = [...configuredOrigins].some((origin) => {
+  try {
+    return new URL(origin).hostname.endsWith(".vercel.app");
+  } catch {
+    return false;
+  }
+});
 
 function isAllowedLocalOrigin(origin) {
   return /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin);
+}
+
+function isAllowedVercelOrigin(origin) {
+  try {
+    const url = new URL(origin);
+    return url.protocol === "https:" && url.hostname.endsWith(".vercel.app");
+  } catch {
+    return false;
+  }
 }
 
 app.use(
   cors({
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
-      if (allowedOrigins.has(origin) || isAllowedLocalOrigin(origin)) {
+
+      const allowBecauseConfigured = configuredOrigins.has(origin);
+      const allowBecauseLocal = isAllowedLocalOrigin(origin);
+      const allowBecauseVercel = hasConfiguredVercelOrigin && isAllowedVercelOrigin(origin);
+
+      if (allowBecauseConfigured || allowBecauseLocal || allowBecauseVercel) {
         return callback(null, true);
       }
-      return callback(new Error("CORS blocked for this origin"));
+
+      // Reject silently so disallowed origins do not trigger server 500s.
+      return callback(null, false);
     },
     credentials: true,
   })

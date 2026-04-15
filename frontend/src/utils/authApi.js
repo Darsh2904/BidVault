@@ -27,6 +27,9 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 15000) {
     if (error?.name === "AbortError") {
       throw new Error("Request timed out. Please try again.");
     }
+    if (error instanceof TypeError) {
+      throw new Error("Unable to reach server. Please check API URL, CORS settings, and network connectivity.");
+    }
     throw error;
   } finally {
     clearTimeout(timeoutId);
