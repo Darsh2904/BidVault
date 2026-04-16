@@ -1,4 +1,6 @@
 # BidVault
+Live Link: https://bid-vault29.vercel.app/
+
 BidVault is a modern auction platform where buyers and sellers can trade high-value items with more confidence.
 The idea is simple: make online auctions feel exciting, but keep payments safe through an escrow-style flow.
 
