@@ -1,8 +1,9 @@
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import User from "../models/User.js";
 import BlockedEmail from "../models/BlockedEmail.js";
 import { signToken } from "../utils/token.js";
-import { sendAdminApprovalEmail, sendOtpEmail, sendWelcomeEmail } from "../utils/sendOtpEmail.js";
+import { sendAdminApprovalEmail, sendOtpEmail, sendTemporaryPasswordEmail, sendWelcomeEmail } from "../utils/sendOtpEmail.js";
 
 function normalizeRole(inputRole) {
   return inputRole === "admin" ? "admin" : "buyer_seller";
@@ -215,6 +216,41 @@ export async function login(req, res) {
     });
   } catch (error) {
     return res.status(500).json({ message: "Login failed", error: error.message });
+  }
+}
+
+export async function forgotPassword(req, res) {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    const normalizedEmail = String(email).toLowerCase().trim();
+    const user = await User.findOne({ email: normalizedEmail });
+
+    if (!user) {
+      return res.status(404).json({ message: "No registered account found for this email" });
+    }
+
+    const temporaryPassword = crypto.randomBytes(6).toString("base64url");
+    user.password = await bcrypt.hash(temporaryPassword, 10);
+    await user.save();
+
+    await sendTemporaryPasswordEmail(user.email, user.name, temporaryPassword);
+
+    const response = {
+      message: "Temporary password sent to your email. Please login and change it.",
+    };
+
+    if (process.env.NODE_ENV !== "production") {
+      response.devTemporaryPassword = temporaryPassword;
+    }
+
+    return res.status(200).json(response);
+  } catch (error) {
+    return res.status(500).json({ message: "Failed to process forgot password request", error: error.message });
   }
 }
 

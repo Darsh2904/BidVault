@@ -343,6 +343,59 @@ export async function getMyAuctionListings(req, res) {
   }
 }
 
+export async function getMyBidAuctions(req, res) {
+  try {
+    const buyerUserId = String(req.user?._id || "");
+    if (!buyerUserId) {
+      return res.status(400).json({ message: "Buyer id is required" });
+    }
+
+    const transactions = await PaymentTransaction.find({ buyerUserId: req.user._id })
+      .sort({ createdAt: -1 })
+      .populate({
+        path: "auctionId",
+        select: "title currentBid startingBid timer urgent winnerUserId live status updatedAt",
+      })
+      .lean();
+
+    const seenAuctionIds = new Set();
+    const bids = [];
+
+    transactions.forEach((transaction) => {
+      const auction = transaction.auctionId;
+      if (!auction || !auction._id) return;
+
+      const auctionId = String(auction._id);
+      if (seenAuctionIds.has(auctionId)) return;
+      seenAuctionIds.add(auctionId);
+
+      const myBidAmount = Number(transaction.amount || 0);
+      const highestBidAmount = Number(auction.currentBid || auction.startingBid || 0);
+      const isWinning = String(auction.winnerUserId || "") === buyerUserId;
+
+      bids.push({
+        id: String(transaction._id),
+        auctionId,
+        item: auction.title,
+        myBid: `₹${myBidAmount.toLocaleString()}`,
+        highestBid: `₹${highestBidAmount.toLocaleString()}`,
+        myBidAmount,
+        highestBidAmount,
+        status: isWinning ? "winning" : "outbid",
+        paymentStatus: transaction.status,
+        ends: auction.timer || "-",
+        urgent: Boolean(auction.urgent),
+        live: Boolean(auction.live),
+        updatedAt: transaction.updatedAt || auction.updatedAt,
+      });
+    });
+
+    return res.status(200).json({ bids });
+  } catch (error) {
+    return res.status(500).json({ message: "Failed to load buyer bids", error: error.message });
+  }
+}
+
 export async function createAuctionListing(req, res) {
   try {
     if (!req.user?._id || !req.user?.email) {

@@ -8,6 +8,7 @@ import {
   approveAuctionListing,
   deleteAndBlockUser,
   getAdminUsers,
+  getMyBidAuctions,
   getMyAuctionListings,
   getMyEscrowTransactions,
   getMyNotifications,
@@ -616,22 +617,21 @@ function EscrowTransactionsSection({ token, user, view = "buyer", title = "My Es
 /* ─── BUYER DASHBOARD ─── */
 function BuyerDash({ user, token }) {
   const [activeSide, setActiveSide] = useState("Overview");
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const buyerMainRef = useRef(null);
   const buyerSectionRefs = useRef({});
+  const navigate = useNavigate();
+  const [buyerNotifications, setBuyerNotifications] = useState([]);
+  const [buyerBids, setBuyerBids] = useState([]);
+  const [buyerBidsLoading, setBuyerBidsLoading] = useState(false);
+  const [buyerBidsError, setBuyerBidsError] = useState("");
   const sideItems = [
     { icon: "🎯", label: "Overview" },
     { icon: "🔨", label: "My Bids" },
     { icon: "🏆", label: "Won Auctions" },
     { icon: "💳", label: "Payment History" },
-    { icon: "🔔", label: "Notifications", badge: 3 },
-    { icon: "👤", label: "Profile" },
-    { icon: "⚙️", label: "Settings" },
-  ];
-  const bids = [
-    { item: "1959 Gibson Les Paul", myBid: "₹46,000", highest: "₹48,500", status: "outbid", ends: "47m", urgent: true },
-    { item: "Patek Philippe Nautilus", myBid: "₹32,000", highest: "₹32,000", status: "winning", ends: "2h 14m", urgent: false },
-    { item: "Banksy Original Print", myBid: "₹8,500", highest: "₹9,200", status: "outbid", ends: "1d 3h", urgent: false },
-    { item: "1967 Ford Mustang GT", myBid: "₹28,000", highest: "₹28,000", status: "winning", ends: "3d", urgent: false },
+    { icon: "🔔", label: "Notifications", badge: buyerNotifications.length > 0 ? Math.min(buyerNotifications.length, 9) : null },
+    { icon: "👤", label: "My Profile" },
   ];
   const bidData = [2, 3, 2, 5, 4, 3, 6, 5, 7, 8, 6, 9, 8, 10, 9, 11, 10, 12, 11, 14, 13, 15, 14, 16, 15, 17, 16, 18, 17, 19];
   const spend = [
@@ -639,6 +639,49 @@ function BuyerDash({ user, token }) {
     { cat: "Watches", val: "₹8.2K", pct: 55, color: "linear-gradient(90deg,#f0b429,#ffd700)" },
     { cat: "Fine Art", val: "₹4.2K", pct: 28, color: "linear-gradient(90deg,#00c48c,#00e5a0)" },
   ];
+  const wonAuctions = buyerBids.filter((entry) => entry.status === "winning");
+  const totalSpentAmount = buyerBids.reduce((sum, entry) => sum + Number(entry.myBidAmount || 0), 0);
+  const outbidCount = buyerBids.filter((entry) => entry.status === "outbid").length;
+
+  const loadBuyerBids = async () => {
+    if (!token) return;
+
+    setBuyerBidsLoading(true);
+    setBuyerBidsError("");
+
+    try {
+      const data = await getMyBidAuctions(token);
+      setBuyerBids(data.bids || []);
+    } catch (error) {
+      setBuyerBids([]);
+      setBuyerBidsError(error.message || "Failed to load bids.");
+    } finally {
+      setBuyerBidsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const loadNotifications = async () => {
+      if (!token) return;
+      try {
+        const data = await getMyNotifications(token);
+        setBuyerNotifications(data.notifications || []);
+      } catch {
+        setBuyerNotifications([]);
+      }
+    };
+
+    loadNotifications();
+  }, [token]);
+
+  useEffect(() => {
+    if (!token) return;
+
+    loadBuyerBids();
+    const intervalId = setInterval(loadBuyerBids, 20000);
+
+    return () => clearInterval(intervalId);
+  }, [token, user?.id]);
 
   const displayName = getDisplayName(user);
   const initials = getInitials(displayName);
@@ -669,11 +712,10 @@ function BuyerDash({ user, token }) {
   const buyerSectionMap = {
     Overview: "overview",
     "My Bids": "bids",
-    "Won Auctions": "insights",
+    "Won Auctions": "wonAuctions",
     "Payment History": "escrow",
-    Notifications: "insights",
-    Profile: "overview",
-    Settings: "insights",
+    Notifications: "notifications",
+    "My Profile": "profile",
   };
 
   const setBuyerSectionRef = (sectionKey) => (node) => {
@@ -684,6 +726,12 @@ function BuyerDash({ user, token }) {
 
   const handleBuyerSideClick = (label) => {
     setActiveSide(label);
+
+    if (label === "My Profile") {
+      setShowProfileModal(true);
+      return;
+    }
+
     const sectionKey = buyerSectionMap[label] || "overview";
     const target = buyerSectionRefs.current[sectionKey];
 
@@ -715,10 +763,10 @@ function BuyerDash({ user, token }) {
 
         <div className="stat-grid">
           {[
-            { ico:"🔨", val:"12", label:"Active Bids", trend:"↑ 4 new today", cls:"purple", tcls:"up" },
-            { ico:"🏆", val:"7", label:"Auctions Won", trend:"↑ 2 this week", cls:"gold", tcls:"up", vcls:"gold" },
-            { ico:"💰", val:"₹24.8K", label:"Total Spent", trend:"↑ 12% vs last month", cls:"green", tcls:"up", vcls:"green" },
-            { ico:"🚨", val:"3", label:"Outbid Alerts", trend:"Act now!", cls:"red", tcls:"warn", vcls:"red" },
+            { ico:"🔨", val:String(buyerBids.length), label:"Active Bids", trend:"Live synced", cls:"purple", tcls:"up" },
+            { ico:"🏆", val:String(wonAuctions.length), label:"Auctions Won", trend:"Live synced", cls:"gold", tcls:"up", vcls:"gold" },
+            { ico:"💰", val:`₹${totalSpentAmount.toLocaleString()}`, label:"Total Bid Value", trend:"Live synced", cls:"green", tcls:"up", vcls:"green" },
+            { ico:"🚨", val:String(outbidCount), label:"Outbid Alerts", trend: outbidCount > 0 ? "Act now!" : "All good", cls:"red", tcls: outbidCount > 0 ? "warn" : "up", vcls:"red" },
           ].map(s => (
             <div key={s.label} className={`stat-card ${s.cls}`}>
               <div className="stat-ico">{s.ico}</div>
@@ -731,29 +779,42 @@ function BuyerDash({ user, token }) {
 
         <div ref={setBuyerSectionRef("bids")} />
         <div className="sec-label">Active Bids</div>
+        {buyerBidsError && (
+          <div style={{ marginBottom: "0.8rem", color: "#ff9c9c", fontSize: "0.82rem" }}>{buyerBidsError}</div>
+        )}
         <div className="tbl-wrap">
           <table>
             <thead><tr>
               <th>Item</th><th>Your Bid</th><th>Highest Bid</th><th>Status</th><th>Ends In</th><th>Action</th>
             </tr></thead>
             <tbody>
-              {bids.map(b => (
-                <tr key={b.item}>
+              {buyerBidsLoading && (
+                <tr>
+                  <td colSpan={6} className="td-muted" style={{ textAlign: "center", padding: "1rem" }}>Loading bids...</td>
+                </tr>
+              )}
+              {!buyerBidsLoading && buyerBids.map(b => (
+                <tr key={b.id}>
                   <td>{b.item}</td>
                   <td>{b.myBid}</td>
                   <td className={b.status === "outbid" ? "td-gold" : ""}
                     style={{ color: b.status === "winning" ? "var(--green)" : b.status === "outbid" ? "var(--gold)" : "" }}>
-                    {b.highest}
+                    {b.highestBid}
                   </td>
                   <td><span className={`pill ${b.status}`}>{b.status.toUpperCase()}</span></td>
                   <td className={b.urgent ? "td-urgent" : "td-muted"}>{b.ends}</td>
                   <td>
                     {b.status === "outbid"
-                      ? <button className="act-btn rebid">Re-bid</button>
-                      : <button className="act-btn watch">Watch</button>}
+                      ? <button className="act-btn rebid" onClick={() => b.auctionId && navigate(`/auctions/${b.auctionId}`)}>Re-bid</button>
+                      : <button className="act-btn watch" onClick={() => b.auctionId && navigate(`/auctions/${b.auctionId}`)}>View</button>}
                   </td>
                 </tr>
               ))}
+              {!buyerBidsLoading && buyerBids.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="td-muted" style={{ textAlign: "center", padding: "1rem" }}>No bids yet.</td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -794,6 +855,99 @@ function BuyerDash({ user, token }) {
             </div>
           </div>
         </div>
+
+        <div ref={setBuyerSectionRef("wonAuctions")} />
+        <div className="sec-label">Won Auctions</div>
+        <div className="tbl-wrap" style={{ marginBottom: "1.75rem" }}>
+          <table>
+            <thead><tr>
+              <th>Item</th><th>Winning Bid</th><th>Status</th><th>Ends In</th>
+            </tr></thead>
+            <tbody>
+              {wonAuctions.map((entry) => (
+                <tr key={`won-${entry.id}`}>
+                  <td>{entry.item}</td>
+                  <td className="td-gold">{entry.highestBid}</td>
+                  <td><span className="pill winning">WINNING</span></td>
+                  <td className="td-muted">{entry.ends}</td>
+                </tr>
+              ))}
+              {wonAuctions.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="td-muted" style={{ textAlign: "center", padding: "1rem" }}>No won auctions yet.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div ref={setBuyerSectionRef("notifications")} />
+        <div className="sec-label">Notifications</div>
+        <div className="tbl-wrap" style={{ marginBottom: "1.75rem" }}>
+          <table>
+            <thead><tr>
+              <th>Message</th><th>Type</th><th>Time</th>
+            </tr></thead>
+            <tbody>
+              {buyerNotifications.slice(0, 8).map((entry) => (
+                <tr key={`buyer-notif-${entry.id}`}>
+                  <td>{entry.message}</td>
+                  <td className="td-muted">{String(entry.type || "").replace(/_/g, " ").toUpperCase()}</td>
+                  <td className="td-muted">{new Date(entry.createdAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</td>
+                </tr>
+              ))}
+              {buyerNotifications.length === 0 && (
+                <tr>
+                  <td colSpan={3} className="td-muted" style={{ textAlign: "center", padding: "1rem" }}>No notifications yet.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {showProfileModal && (
+          <div
+            onClick={() => setShowProfileModal(false)}
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0, 0, 0, 0.55)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1000,
+              padding: "1rem",
+            }}
+          >
+            <div
+              onClick={(event) => event.stopPropagation()}
+              style={{
+                width: "min(100%, 520px)",
+                background: "var(--bg3)",
+                border: "1px solid var(--border)",
+                borderRadius: "14px",
+                padding: "1.15rem 1.2rem",
+                boxShadow: "0 16px 40px rgba(0,0,0,0.45)",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.9rem" }}>
+                <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: "1.1rem" }}>My Profile</div>
+                <button className="act-btn view" onClick={() => setShowProfileModal(false)}>Close</button>
+              </div>
+
+              <div style={{ display: "grid", gap: "0.65rem" }}>
+                <div><span className="td-muted">Name:</span> {displayName}</div>
+                <div><span className="td-muted">Email:</span> {user?.email || "-"}</div>
+                <div><span className="td-muted">Role:</span> {String(user?.role || "buyer_seller").replace(/_/g, " ").toUpperCase()}</div>
+                <div><span className="td-muted">Status:</span> {String(user?.status || "active").toUpperCase()}</div>
+                <div><span className="td-muted">Verified:</span> {user?.isVerified ? "Yes" : "No"}</div>
+                {user?.role === "admin" && (
+                  <div><span className="td-muted">Admin Approved:</span> {user?.isAdminApproved ? "Yes" : "No"}</div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
@@ -823,6 +977,7 @@ function SellerDash({ user, token }) {
   const earningsData = [18000, 22000, 19000, 28000, 24000, 35000, 42000];
 
   const activeAuctions = sellerListings.filter((entry) => entry.status === "approved" && entry.live !== false);
+  const salesHistory = sellerListings.filter((entry) => entry.live === false);
 
   const loadSellerListings = async () => {
     if (!token) return;
@@ -856,17 +1011,21 @@ function SellerDash({ user, token }) {
 
   useEffect(() => {
     loadSellerListings();
-  }, [token]);
+    if (!token) return undefined;
+
+    const intervalId = setInterval(loadSellerListings, 20000);
+    return () => clearInterval(intervalId);
+  }, [token, user?.email]);
 
   const sellerSectionMap = {
     Overview: "overview",
     "Create Auction": "overview",
     "My Listings": "listings",
     "Active Auctions": "auctions",
-    "Sales History": "earnings",
+    "Sales History": "salesHistory",
     Earnings: "earnings",
     Escrow: "escrow",
-    Reviews: "notifications",
+    Reviews: "reviews",
   };
 
   const setSellerSectionRef = (sectionKey) => (node) => {
@@ -1016,7 +1175,33 @@ function SellerDash({ user, token }) {
             labels={["Aug","Sep","Oct","Nov","Dec","Jan"]} />
         </div>
 
-          <div ref={setSellerSectionRef("notifications")} />
+        <div ref={setSellerSectionRef("salesHistory")} />
+        <div className="sec-label" style={{ marginTop: "1.75rem" }}>Sales History</div>
+        <div className="tbl-wrap" style={{ marginBottom: "1.75rem" }}>
+          <table>
+            <thead><tr>
+              <th>Item</th><th>Category</th><th>Final Bid</th><th>Status</th><th>Updated</th>
+            </tr></thead>
+            <tbody>
+              {salesHistory.map((entry) => (
+                <tr key={`sale-${entry.id}`}>
+                  <td>{entry.item}</td>
+                  <td className="td-muted">{entry.cat}</td>
+                  <td className="td-gold">{entry.bid}</td>
+                  <td><span className="pill ended">CLOSED</span></td>
+                  <td className="td-muted">{new Date(entry.updatedAt || entry.createdAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</td>
+                </tr>
+              ))}
+              {!sellerListingsLoading && salesHistory.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="td-muted" style={{ textAlign: "center", padding: "1rem" }}>No sales history available yet.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+          <div ref={setSellerSectionRef("reviews")} />
         <div className="sec-label" style={{ marginTop: "1.75rem" }}>Seller Notifications</div>
         <div className="tbl-wrap">
           <table>
@@ -1253,7 +1438,7 @@ function AdminDash({ user, token }) {
     "Auction Monitor": "auctions",
     Reports: "reports",
     "Fraud Monitor": "fraud",
-    Disputes: "escrow",
+    Disputes: "disputes",
     "System Config": "config",
   };
 

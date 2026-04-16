@@ -66,6 +66,16 @@ export async function loginUser(payload) {
   return parseResponse(response);
 }
 
+export async function requestForgotPassword(payload) {
+  const response = await fetchWithTimeout(`${API_BASE}/auth/forgot-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  }, OTP_REQUEST_TIMEOUT_MS);
+
+  return parseResponse(response);
+}
+
 export async function getMe(token) {
   const response = await fetch(`${API_BASE}/auth/me`, {
     headers: {
@@ -181,6 +191,17 @@ export async function getApprovedAuctions() {
 
 export async function getMyAuctionListings(token) {
   const response = await fetch(`${API_BASE}/auctions/mine`, {
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(token),
+    },
+  });
+
+  return parseResponse(response);
+}
+
+export async function getMyBidAuctions(token) {
+  const response = await fetch(`${API_BASE}/auctions/my-bids`, {
     headers: {
       "Content-Type": "application/json",
       ...authHeaders(token),

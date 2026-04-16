@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   approveAdminRequest,
+  forgotPassword,
   getPendingAdminRequests,
   login,
   me,
@@ -13,6 +14,7 @@ const router = Router();
 
 router.post("/signup/request-otp", requestSignupOtp);
 router.post("/signup/verify-otp", verifySignupOtp);
+router.post("/forgot-password", forgotPassword);
 router.post("/login", login);
 router.get("/me", requireAuth, me);
 

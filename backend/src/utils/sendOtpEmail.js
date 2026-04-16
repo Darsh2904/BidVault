@@ -98,6 +98,22 @@ export async function sendWelcomeEmail(email, name = "there") {
   await sendEmail({ to: email, subject, html });
 }
 
+export async function sendTemporaryPasswordEmail(email, name = "there", temporaryPassword = "") {
+  const subject = "BidVault temporary password";
+  const html = `
+      <div style="font-family:Arial,sans-serif;line-height:1.6;max-width:560px">
+        <h2 style="margin-bottom:12px;">Hi ${name},</h2>
+        <p>We received a password reset request for your BidVault account.</p>
+        <p>Your temporary password is:</p>
+        <div style="font-size:24px;font-weight:700;letter-spacing:2px;margin:12px 0">${temporaryPassword}</div>
+        <p>Please log in using this temporary password and change it immediately.</p>
+        <p style="margin-top:20px;">Regards,<br/>BidVault Team</p>
+      </div>
+    `;
+
+  await sendEmail({ to: email, subject, html });
+}
+
 async function sendEmail({ to, subject, html }) {
   const mailFrom = String(process.env.MAIL_FROM || "").trim();
   const mailFromLower = mailFrom.toLowerCase();
