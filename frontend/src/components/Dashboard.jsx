@@ -28,7 +28,7 @@ const css = `
   --green:#00c48c;--red:#ff4444;--orange:#ff8c00;
   --text:#fff;--muted:#8888aa;--border:rgba(108,92,231,.2);
 }
-body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;zoom:1;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;zoom:1;overflow-x:hidden;}
 
 /* NAV */
 .nav{position:sticky;top:0;z-index:200;display:flex;align-items:center;justify-content:space-between;padding:0 2rem;height:64px;background:rgba(10,10,15,.88);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);}
@@ -200,13 +200,28 @@ tr:hover td{background:rgba(108,92,231,.04);}
   }
   .side-title{display:none;}
   .side-item{margin:0;flex:0 0 auto;white-space:nowrap;}
-  .main{padding:1rem;overflow-x:hidden;}
+  .main{padding:1rem;overflow-x:auto;-webkit-overflow-scrolling:touch;}
 }
 
 @media(max-width:780px){
-  .nav-r{gap:.5rem;flex-wrap:wrap;justify-content:flex-end;}
-  .ib.notif,.nav-r .btn-o{display:none;}
-  .btn-p{padding:.35rem .7rem;font-size:.75rem;}
+  .nav{min-height:64px;height:auto;padding:.55rem .8rem;gap:.55rem;}
+  .nav-r{
+    gap:.45rem;
+    flex-wrap:nowrap;
+    justify-content:flex-end;
+    max-width:68vw;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+    padding-bottom:2px;
+  }
+  .nav-r::-webkit-scrollbar{display:none;}
+  .ib.notif{display:none;}
+  .btn-o,.btn-p{
+    flex:0 0 auto;
+    white-space:nowrap;
+    padding:.35rem .62rem;
+    font-size:.74rem;
+  }
   .dash-header{flex-direction:column;gap:.75rem;align-items:flex-start;}
   .dash-title{font-size:1.35rem;}
   .avatar{width:44px;height:44px;font-size:.9rem;}
@@ -214,6 +229,7 @@ tr:hover td{background:rgba(108,92,231,.04);}
   .chart-card{padding:1rem;}
   .search-input{width:100%;}
   .tbl-wrap{border-radius:12px;}
+  table{min-width:700px;}
   th,td{padding:.75rem .9rem;}
 }
 
@@ -224,6 +240,7 @@ tr:hover td{background:rgba(108,92,231,.04);}
   .dash-sub{font-size:.82rem;}
   .act-btn{padding:.32rem .68rem;font-size:.74rem;}
   .fraud-alert{padding:.8rem .9rem;}
+  table{min-width:580px;}
 }
 `;
 

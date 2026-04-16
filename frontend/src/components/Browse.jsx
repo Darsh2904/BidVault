@@ -264,10 +264,24 @@ const styles = `
 
   @media (max-width: 768px) {
     .navbar { min-height: 64px; height: auto; padding: 0.55rem 0.8rem; gap: 0.6rem; }
-    .nav-right { gap: 0.45rem; flex-wrap: wrap; justify-content: flex-end; }
-    .nav-icon-btn.notif,
-    .nav-right .btn-outline { display: none; }
-    .btn-primary { padding: 0.35rem 0.65rem; font-size: 0.75rem; }
+    .nav-right {
+      gap: 0.45rem;
+      flex-wrap: nowrap;
+      justify-content: flex-end;
+      max-width: 68vw;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 2px;
+    }
+    .nav-right::-webkit-scrollbar { display: none; }
+    .nav-icon-btn.notif { display: none; }
+    .btn-outline,
+    .btn-primary {
+      flex: 0 0 auto;
+      white-space: nowrap;
+      padding: 0.35rem 0.62rem;
+      font-size: 0.74rem;
+    }
     .browse-layout { padding: 0 0.8rem 2rem; gap: 1rem; }
     .main-content { padding-top: 1rem; }
     .top-bar { flex-direction: column; align-items: flex-start; gap: 0.65rem; }
