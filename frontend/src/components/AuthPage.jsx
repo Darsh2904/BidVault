@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { loginUser, requestForgotPasswordOtp, requestSignupOtp, resetForgotPassword, verifySignupOtp } from "../utils/authApi";
+import { loginUser, requestSignupOtp, verifySignupOtp } from "../utils/authApi";
 import { useAuth } from "../context/AuthContext";
 
 const pageStyles = `
@@ -128,81 +128,6 @@ const pageStyles = `
     cursor: not-allowed;
   }
 
-  .forgot-link {
-    margin-top: -0.25rem;
-    justify-self: end;
-    border: none;
-    background: transparent;
-    color: #8b7cf8;
-    font-size: 0.84rem;
-    font-weight: 600;
-    cursor: pointer;
-    padding: 0;
-  }
-
-  .forgot-link:hover {
-    color: #a899ff;
-    text-decoration: underline;
-  }
-
-  .auth-modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.62);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 999;
-    padding: 1rem;
-  }
-
-  .auth-modal {
-    width: min(100%, 430px);
-    background: #151526;
-    border: 1px solid rgba(139, 124, 248, 0.34);
-    border-radius: 14px;
-    padding: 1rem;
-  }
-
-  .auth-modal-title {
-    font-family: 'Syne', sans-serif;
-    font-size: 1.1rem;
-    margin-bottom: 0.35rem;
-  }
-
-  .auth-modal-sub {
-    color: #b2b2d8;
-    font-size: 0.88rem;
-    margin-bottom: 0.85rem;
-  }
-
-  .auth-modal-actions {
-    display: flex;
-    gap: 0.6rem;
-    margin-top: 0.35rem;
-  }
-
-  .auth-modal-btn {
-    flex: 1;
-    border-radius: 10px;
-    border: 1px solid rgba(139, 124, 248, 0.32);
-    background: transparent;
-    color: #fff;
-    font-weight: 600;
-    cursor: pointer;
-    padding: 0.7rem;
-  }
-
-  .auth-modal-btn.primary {
-    border: none;
-    background: linear-gradient(135deg, #6c5ce7, #5845e3);
-  }
-
-  .auth-modal-btn:disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
-  }
-
   .auth-msg {
     margin-top: 0.8rem;
     border-radius: 9px;
@@ -255,13 +180,6 @@ export default function AuthPage() {
   const [otpSent, setOtpSent] = useState(false);
 
   const [loginData, setLoginData] = useState({ email: "", password: "" });
-  const [forgotEmail, setForgotEmail] = useState("");
-  const [forgotOtp, setForgotOtp] = useState("");
-  const [forgotNewPassword, setForgotNewPassword] = useState("");
-  const [forgotConfirmPassword, setForgotConfirmPassword] = useState("");
-  const [forgotStep, setForgotStep] = useState("request");
-  const [forgotLoading, setForgotLoading] = useState(false);
-  const [showForgotModal, setShowForgotModal] = useState(false);
 
   const isAdminRole = useMemo(() => signupData.role === "admin", [signupData.role]);
 
@@ -328,69 +246,6 @@ export default function AuthPage() {
       showMessage("error", error.message);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const openForgotModal = () => {
-    setForgotEmail(loginData.email || "");
-    setForgotOtp("");
-    setForgotNewPassword("");
-    setForgotConfirmPassword("");
-    setForgotStep("request");
-    setShowForgotModal(true);
-  };
-
-  const handleForgotPasswordRequestOtp = async (e) => {
-    e.preventDefault();
-    setForgotLoading(true);
-    setMessage({ type: "", text: "" });
-
-    try {
-      const result = await requestForgotPasswordOtp({ email: forgotEmail });
-      showMessage("success", result.message || "OTP sent to your email.");
-      setForgotStep("verify");
-    } catch (error) {
-      showMessage("error", error.message || "Unable to process forgot password request.");
-    } finally {
-      setForgotLoading(false);
-    }
-  };
-
-  const handleForgotPasswordReset = async (e) => {
-    e.preventDefault();
-
-    if (forgotNewPassword.length < 6) {
-      showMessage("error", "New password must be at least 6 characters.");
-      return;
-    }
-
-    if (forgotNewPassword !== forgotConfirmPassword) {
-      showMessage("error", "New password and confirm password must match.");
-      return;
-    }
-
-    setForgotLoading(true);
-    setMessage({ type: "", text: "" });
-
-    try {
-      const result = await resetForgotPassword({
-        email: forgotEmail,
-        otp: forgotOtp,
-        newPassword: forgotNewPassword,
-      });
-
-      showMessage("success", result.message || "Password reset successful. Please login.");
-      setLoginData((prev) => ({ ...prev, email: forgotEmail }));
-      setShowForgotModal(false);
-      setForgotEmail("");
-      setForgotOtp("");
-      setForgotNewPassword("");
-      setForgotConfirmPassword("");
-      setForgotStep("request");
-    } catch (error) {
-      showMessage("error", error.message || "Unable to reset password.");
-    } finally {
-      setForgotLoading(false);
     }
   };
 
@@ -536,10 +391,6 @@ export default function AuthPage() {
                   />
                 </div>
 
-                <button type="button" className="forgot-link" onClick={openForgotModal}>
-                  Forgot Password?
-                </button>
-
                 <button className="auth-btn" disabled={loading} type="submit">
                   {loading ? "Logging in..." : "Login"}
                 </button>
@@ -550,91 +401,6 @@ export default function AuthPage() {
           {message.text && <div className={`auth-msg ${message.type}`}>{message.text}</div>}
         </div>
       </div>
-
-      {showForgotModal && (
-        <div className="auth-modal-overlay" onClick={() => !forgotLoading && setShowForgotModal(false)}>
-          <form
-            className="auth-modal"
-            onSubmit={forgotStep === "request" ? handleForgotPasswordRequestOtp : handleForgotPasswordReset}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="auth-modal-title">Forgot Password</h3>
-            <p className="auth-modal-sub">
-              {forgotStep === "request"
-                ? "Enter your registered email. We will send an OTP."
-                : "Enter OTP and set your new password."}
-            </p>
-
-            <label className="auth-label">Email</label>
-            <input
-              className="auth-input"
-              type="email"
-              placeholder="you@example.com"
-              value={forgotEmail}
-              onChange={(e) => setForgotEmail(e.target.value)}
-              disabled={forgotStep !== "request"}
-              required
-            />
-
-            {forgotStep === "verify" && (
-              <>
-                <label className="auth-label">OTP</label>
-                <input
-                  className="auth-input"
-                  type="text"
-                  placeholder="Enter 6-digit OTP"
-                  value={forgotOtp}
-                  onChange={(e) => setForgotOtp(e.target.value)}
-                  required
-                />
-
-                <label className="auth-label">New Password</label>
-                <input
-                  className="auth-input"
-                  type="password"
-                  placeholder="At least 6 characters"
-                  value={forgotNewPassword}
-                  onChange={(e) => setForgotNewPassword(e.target.value)}
-                  required
-                />
-
-                <label className="auth-label">Confirm Password</label>
-                <input
-                  className="auth-input"
-                  type="password"
-                  placeholder="Re-enter new password"
-                  value={forgotConfirmPassword}
-                  onChange={(e) => setForgotConfirmPassword(e.target.value)}
-                  required
-                />
-              </>
-            )}
-
-            <div className="auth-modal-actions">
-              <button
-                type="button"
-                className="auth-modal-btn"
-                disabled={forgotLoading}
-                onClick={() => {
-                  setShowForgotModal(false);
-                  setForgotStep("request");
-                }}
-              >
-                Cancel
-              </button>
-              <button type="submit" className="auth-modal-btn primary" disabled={forgotLoading}>
-                {forgotLoading
-                  ? forgotStep === "request"
-                    ? "Sending OTP..."
-                    : "Updating..."
-                  : forgotStep === "request"
-                  ? "Send OTP"
-                  : "Set New Password"}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
     </>
   );
 }
