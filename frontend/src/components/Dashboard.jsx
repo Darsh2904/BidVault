@@ -5,17 +5,15 @@ import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import {
   approveAdminRequest,
-  approveAuctionListing,
   deleteAndBlockUser,
   getAdminUsers,
+  getApprovedAuctions,
   getMyBidAuctions,
   getMyAuctionListings,
   getMyEscrowTransactions,
   getMyNotifications,
   getPendingAdminRequests,
-  getPendingAuctionListings,
   raiseEscrowDispute,
-  rejectAuctionListing,
   releaseEscrowFunds,
   requestEscrowRelease,
   updateAdminUserStatus,
@@ -1251,7 +1249,7 @@ function AdminDash({ user, token }) {
     { icon: "⚙️", label: "System Config" },
   ];
   const [users, setUsers] = useState([]);
-  const [pending, setPending] = useState([]);
+  const [liveAuctions, setLiveAuctions] = useState([]);
   const revenueData = [12000, 18000, 15000, 22000, 19000, 28000, 35000];
   const regData = [120, 200, 160, 280, 240, 310, 180];
 
@@ -1277,13 +1275,13 @@ function AdminDash({ user, token }) {
 
       setIsLoading(true);
       try {
-        const [usersData, pendingData] = await Promise.all([
+        const [usersData, liveAuctionsData] = await Promise.all([
           getAdminUsers(token),
-          getPendingAuctionListings(token),
+          getApprovedAuctions(),
         ]);
 
         setUsers(usersData.users || []);
-        setPending(pendingData.pending || []);
+        setLiveAuctions(liveAuctionsData.auctions || []);
         const flaggedCount = (usersData.users || []).filter((entry) => entry.status === "flagged").length;
         setFraudAlerts(flaggedCount);
       } catch (error) {
@@ -1298,7 +1296,7 @@ function AdminDash({ user, token }) {
 
   const handleExport = () => {
     const headingUsers = ["Name", "Email", "Role", "Status", "Joined"];
-    const headingAuctions = ["Item", "Seller", "Starting Bid", "Category"];
+    const headingAuctions = ["Item", "Seller", "Current Bid", "Category", "Timer"];
 
     const toCsvRow = (arr) =>
       arr
@@ -1312,9 +1310,9 @@ function AdminDash({ user, token }) {
       toCsvRow(headingUsers),
       ...users.map((entry) => toCsvRow([entry.name, entry.email, entry.role, entry.status, entry.joined])),
       "",
-      "Pending Auction Approvals",
+      "Live Auction Monitor",
       toCsvRow(headingAuctions),
-      ...pending.map((entry) => toCsvRow([entry.item, entry.seller, entry.bid, entry.cat])),
+      ...liveAuctions.map((entry) => toCsvRow([entry.title, entry.seller, entry.bid, entry.cat, entry.timer || "-"])),
     ];
 
     const blob = new Blob([rows.join("\n")], { type: "text/csv;charset=utf-8;" });
@@ -1412,24 +1410,6 @@ function AdminDash({ user, token }) {
       .catch((error) => pushNotice(error.message));
   };
 
-  const handleApproveAuction = (auctionId) => {
-    approveAuctionListing(auctionId, token)
-      .then(() => {
-        setPending((prev) => prev.filter((entry) => entry.id !== auctionId));
-        pushNotice("Auction approved. Seller notified.");
-      })
-      .catch((error) => pushNotice(error.message));
-  };
-
-  const handleRejectAuction = (auctionId) => {
-    rejectAuctionListing(auctionId, token)
-      .then(() => {
-        setPending((prev) => prev.filter((entry) => entry.id !== auctionId));
-        pushNotice("Auction rejected. Seller notified.");
-      })
-      .catch((error) => pushNotice(error.message));
-  };
-
   const blockedActionStyle = emergencyMode ? { opacity: 0.6, cursor: "not-allowed" } : undefined;
 
   const adminSectionMap = {
@@ -1511,7 +1491,7 @@ function AdminDash({ user, token }) {
         <div className="stat-grid5">
           {[
             { ico:"👥", val:String(users.length), label:"Total Users", trend:"Live moderation", cls:"purple" },
-            { ico:"🔨", val:String(pending.length), label:"Pending Auctions", trend:"Needs approval", cls:"gold", vcls:"gold" },
+            { ico:"🔨", val:String(liveAuctions.length), label:"Live Auctions", trend:"Under monitoring", cls:"gold", vcls:"gold" },
             { ico:"💰", val:"₹8.4M", label:"Revenue MTD", trend:"↑ 18%", cls:"green", vcls:"green" },
             { ico:"🚨", val:String(fraudAlerts), label:"Fraud Alerts", trend: fraudAlerts > 0 ? "Review needed" : "All reviewed", cls:"red", vcls:"red", tcls: fraudAlerts > 0 ? "warn" : "up" },
             { ico:"⚖️", val:"7", label:"Open Disputes", trend:"↑ 3 new", cls:"blue", tcls:"warn" },
@@ -1609,28 +1589,26 @@ function AdminDash({ user, token }) {
         </div>
 
         <div ref={setAdminSectionRef("auctions")} />
-        <div className="sec-label">Pending Auction Approvals</div>
+        <div className="sec-label">Live Auction Monitor</div>
         <div className="tbl-wrap">
           <table>
             <thead><tr>
-              <th>Item</th><th>Seller</th><th>Starting Bid</th><th>Category</th><th>Actions</th>
+              <th>Item</th><th>Seller</th><th>Current Bid</th><th>Category</th><th>Timer</th><th>Status</th>
             </tr></thead>
             <tbody>
-              {pending.map(p => (
-                <tr key={p.id}>
-                  <td>{p.item}</td>
-                  <td className="td-muted">{p.seller}</td>
-                  <td>{p.bid}</td>
-                  <td className="td-muted">{p.cat}</td>
-                  <td style={{ display: "flex", gap: ".4rem", flexWrap: "wrap", alignItems: "center" }}>
-                    <button className="act-btn approve" disabled={emergencyMode} style={blockedActionStyle} onClick={() => handleApproveAuction(p.id)}>Approve</button>
-                    <button className="act-btn reject" disabled={emergencyMode} style={blockedActionStyle} onClick={() => handleRejectAuction(p.id)}>Reject</button>
-                  </td>
+              {liveAuctions.map((entry) => (
+                <tr key={entry.id}>
+                  <td>{entry.title}</td>
+                  <td className="td-muted">{entry.seller}</td>
+                  <td>{entry.bid}</td>
+                  <td className="td-muted">{entry.cat}</td>
+                  <td className="td-muted">{entry.timer || "-"}</td>
+                  <td><span className="pill live">LIVE</span></td>
                 </tr>
               ))}
-              {pending.length === 0 && (
+              {liveAuctions.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="td-muted" style={{ textAlign: "center", padding: "1.1rem" }}>No pending auction approvals.</td>
+                  <td colSpan={6} className="td-muted" style={{ textAlign: "center", padding: "1.1rem" }}>No live auctions to monitor.</td>
                 </tr>
               )}
             </tbody>
