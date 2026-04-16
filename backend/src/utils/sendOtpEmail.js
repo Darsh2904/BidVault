@@ -68,6 +68,21 @@ export async function sendOtpEmail(email, otp) {
   await sendEmail({ to: email, subject, html });
 }
 
+export async function sendPasswordResetOtpEmail(email, otp) {
+  const subject = "BidVault Password Reset OTP";
+  const html = `
+      <div style="font-family:Arial,sans-serif;line-height:1.5;max-width:540px">
+        <h2>Reset your BidVault password</h2>
+        <p>Your password reset OTP is:</p>
+        <div style="font-size:28px;font-weight:700;letter-spacing:4px;margin:12px 0">${otp}</div>
+        <p>This OTP expires in 10 minutes.</p>
+        <p>If you did not request a password reset, you can safely ignore this email.</p>
+      </div>
+    `;
+
+  await sendEmail({ to: email, subject, html });
+}
+
 export async function sendAdminApprovalEmail(email, name = "there") {
   const subject = "BidVault accepted your admin request";
   const html = `

@@ -2,7 +2,12 @@ import bcrypt from "bcryptjs";
 import User from "../models/User.js";
 import BlockedEmail from "../models/BlockedEmail.js";
 import { signToken } from "../utils/token.js";
-import { sendAdminApprovalEmail, sendOtpEmail, sendWelcomeEmail } from "../utils/sendOtpEmail.js";
+import {
+  sendAdminApprovalEmail,
+  sendOtpEmail,
+  sendPasswordResetOtpEmail,
+  sendWelcomeEmail,
+} from "../utils/sendOtpEmail.js";
 
 function normalizeRole(inputRole) {
   return inputRole === "admin" ? "admin" : "buyer_seller";
@@ -215,6 +220,96 @@ export async function login(req, res) {
     });
   } catch (error) {
     return res.status(500).json({ message: "Login failed", error: error.message });
+  }
+}
+
+export async function requestForgotPasswordOtp(req, res) {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    const normalizedEmail = String(email).toLowerCase().trim();
+    const user = await User.findOne({ email: normalizedEmail });
+
+    // Keep response generic to avoid exposing whether an account exists.
+    if (!user || !user.isVerified) {
+      return res.status(200).json({
+        message: "If an account exists for this email, a password reset OTP has been sent.",
+      });
+    }
+
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    user.passwordResetOtpHash = await bcrypt.hash(otp, 10);
+    user.passwordResetOtpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    await user.save();
+
+    try {
+      await sendPasswordResetOtpEmail(normalizedEmail, otp);
+    } catch (mailError) {
+      user.passwordResetOtpHash = null;
+      user.passwordResetOtpExpiresAt = null;
+      await user.save();
+      throw mailError;
+    }
+
+    const response = {
+      message: "If an account exists for this email, a password reset OTP has been sent.",
+    };
+
+    if (process.env.NODE_ENV !== "production") {
+      response.devOtp = otp;
+    }
+
+    return res.status(200).json(response);
+  } catch (error) {
+    return res.status(500).json({ message: "Failed to send forgot-password OTP", error: error.message });
+  }
+}
+
+export async function resetForgotPassword(req, res) {
+  try {
+    const { email, otp, newPassword } = req.body;
+
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({ message: "Email, OTP and new password are required" });
+    }
+
+    if (String(newPassword).length < 6) {
+      return res.status(400).json({ message: "New password must be at least 6 characters" });
+    }
+
+    const normalizedEmail = String(email).toLowerCase().trim();
+    const user = await User.findOne({ email: normalizedEmail });
+
+    if (!user || !user.passwordResetOtpHash || !user.passwordResetOtpExpiresAt) {
+      return res.status(400).json({ message: "Invalid or expired OTP" });
+    }
+
+    if (new Date() > user.passwordResetOtpExpiresAt) {
+      user.passwordResetOtpHash = null;
+      user.passwordResetOtpExpiresAt = null;
+      await user.save();
+      return res.status(400).json({ message: "OTP expired. Please request a new OTP" });
+    }
+
+    const isOtpValid = await bcrypt.compare(String(otp), user.passwordResetOtpHash);
+    if (!isOtpValid) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    user.password = await bcrypt.hash(String(newPassword), 10);
+    user.passwordResetOtpHash = null;
+    user.passwordResetOtpExpiresAt = null;
+
+    await user.save();
+
+    return res.status(200).json({ message: "Password reset successful. Please login with your new password." });
+  } catch (error) {
+    return res.status(500).json({ message: "Failed to reset password", error: error.message });
   }
 }
 

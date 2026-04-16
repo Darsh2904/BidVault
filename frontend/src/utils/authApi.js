@@ -56,6 +56,34 @@ export async function verifySignupOtp(payload) {
   return parseResponse(response);
 }
 
+export async function requestForgotPasswordOtp(payload) {
+  const response = await fetchWithTimeout(
+    `${API_BASE}/auth/forgot-password/request-otp`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    },
+    OTP_REQUEST_TIMEOUT_MS
+  );
+
+  return parseResponse(response);
+}
+
+export async function resetForgotPassword(payload) {
+  const response = await fetchWithTimeout(
+    `${API_BASE}/auth/forgot-password/reset`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    },
+    OTP_REQUEST_TIMEOUT_MS
+  );
+
+  return parseResponse(response);
+}
+
 export async function loginUser(payload) {
   const response = await fetch(`${API_BASE}/auth/login`, {
     method: "POST",

@@ -1,6 +1,12 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { loginUser, requestSignupOtp, verifySignupOtp } from "../utils/authApi";
+import {
+  loginUser,
+  requestForgotPasswordOtp,
+  requestSignupOtp,
+  resetForgotPassword,
+  verifySignupOtp,
+} from "../utils/authApi";
 import { useAuth } from "../context/AuthContext";
 
 const pageStyles = `
@@ -128,6 +134,26 @@ const pageStyles = `
     cursor: not-allowed;
   }
 
+  .auth-inline-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: -0.3rem;
+  }
+
+  .auth-link-btn {
+    background: transparent;
+    border: none;
+    color: #b8a8ff;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .auth-link-btn:hover {
+    color: #d6cdff;
+  }
+
   .auth-msg {
     margin-top: 0.8rem;
     border-radius: 9px;
@@ -145,6 +171,54 @@ const pageStyles = `
     background: rgba(0, 196, 140, 0.12);
     color: #8ff0cc;
     border: 1px solid rgba(0, 196, 140, 0.3);
+  }
+
+  .forgot-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(7, 7, 13, 0.78);
+    display: grid;
+    place-items: center;
+    z-index: 1200;
+    padding: 1rem;
+  }
+
+  .forgot-modal {
+    width: min(100%, 470px);
+    background: rgba(17, 17, 28, 0.97);
+    border: 1px solid rgba(139, 124, 248, 0.35);
+    border-radius: 14px;
+    padding: 1rem;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+  }
+
+  .forgot-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+  }
+
+  .forgot-title {
+    margin: 0;
+    font-family: 'Syne', sans-serif;
+    font-size: 1.12rem;
+  }
+
+  .forgot-close {
+    border: 1px solid rgba(139, 124, 248, 0.3);
+    background: #23233a;
+    color: #dcdcff;
+    border-radius: 8px;
+    cursor: pointer;
+    padding: 0.24rem 0.5rem;
+    font-size: 0.9rem;
+  }
+
+  .forgot-sub {
+    color: #a7a7ce;
+    font-size: 0.86rem;
+    margin: 0 0 0.75rem;
   }
 
   @media (max-width: 640px) {
@@ -180,10 +254,46 @@ export default function AuthPage() {
   const [otpSent, setOtpSent] = useState(false);
 
   const [loginData, setLoginData] = useState({ email: "", password: "" });
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotStep, setForgotStep] = useState("request");
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotData, setForgotData] = useState({
+    email: "",
+    otp: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [forgotMessage, setForgotMessage] = useState({ type: "", text: "" });
 
   const isAdminRole = useMemo(() => signupData.role === "admin", [signupData.role]);
 
   const showMessage = (type, text) => setMessage({ type, text });
+  const showForgotMessage = (type, text) => setForgotMessage({ type, text });
+
+  const closeForgotModal = () => {
+    setShowForgotModal(false);
+    setForgotStep("request");
+    setForgotLoading(false);
+    setForgotMessage({ type: "", text: "" });
+    setForgotData({
+      email: "",
+      otp: "",
+      newPassword: "",
+      confirmPassword: "",
+    });
+  };
+
+  const openForgotModal = () => {
+    setShowForgotModal(true);
+    setForgotStep("request");
+    setForgotMessage({ type: "", text: "" });
+    setForgotData({
+      email: loginData.email || "",
+      otp: "",
+      newPassword: "",
+      confirmPassword: "",
+    });
+  };
 
   const handleSignupRequestOtp = async (e) => {
     e.preventDefault();
@@ -246,6 +356,50 @@ export default function AuthPage() {
       showMessage("error", error.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleForgotRequestOtp = async (e) => {
+    e.preventDefault();
+    setForgotLoading(true);
+    setForgotMessage({ type: "", text: "" });
+
+    try {
+      await requestForgotPasswordOtp({ email: forgotData.email });
+      setForgotStep("verify");
+      showForgotMessage("success", "OTP sent to your email. Enter OTP and set a new password.");
+    } catch (error) {
+      showForgotMessage("error", error.message);
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const handleForgotResetPassword = async (e) => {
+    e.preventDefault();
+
+    if (forgotData.newPassword !== forgotData.confirmPassword) {
+      showForgotMessage("error", "New password and confirm password do not match.");
+      return;
+    }
+
+    setForgotLoading(true);
+    setForgotMessage({ type: "", text: "" });
+
+    try {
+      await resetForgotPassword({
+        email: forgotData.email,
+        otp: forgotData.otp,
+        newPassword: forgotData.newPassword,
+      });
+
+      showMessage("success", "Password reset successful. Please login with your new password.");
+      setLoginData((prev) => ({ ...prev, email: forgotData.email, password: "" }));
+      closeForgotModal();
+    } catch (error) {
+      showForgotMessage("error", error.message);
+    } finally {
+      setForgotLoading(false);
     }
   };
 
@@ -391,6 +545,12 @@ export default function AuthPage() {
                   />
                 </div>
 
+                <div className="auth-inline-actions">
+                  <button className="auth-link-btn" onClick={openForgotModal} type="button">
+                    Forgot password?
+                  </button>
+                </div>
+
                 <button className="auth-btn" disabled={loading} type="submit">
                   {loading ? "Logging in..." : "Login"}
                 </button>
@@ -401,6 +561,108 @@ export default function AuthPage() {
           {message.text && <div className={`auth-msg ${message.type}`}>{message.text}</div>}
         </div>
       </div>
+
+      {showForgotModal && (
+        <div className="forgot-overlay" role="dialog" aria-modal="true">
+          <div className="forgot-modal">
+            <div className="forgot-header">
+              <h3 className="forgot-title">Reset Password</h3>
+              <button className="forgot-close" onClick={closeForgotModal} type="button">
+                Close
+              </button>
+            </div>
+
+            {forgotStep === "request" ? (
+              <>
+                <p className="forgot-sub">Enter your registered email. We will send a 6-digit OTP.</p>
+                <form className="auth-grid" onSubmit={handleForgotRequestOtp}>
+                  <div>
+                    <label className="auth-label">Email</label>
+                    <input
+                      className="auth-input"
+                      type="email"
+                      placeholder="you@example.com"
+                      value={forgotData.email}
+                      onChange={(e) =>
+                        setForgotData((prev) => ({
+                          ...prev,
+                          email: e.target.value,
+                        }))
+                      }
+                      required
+                    />
+                  </div>
+                  <button className="auth-btn" disabled={forgotLoading} type="submit">
+                    {forgotLoading ? "Sending OTP..." : "Send OTP"}
+                  </button>
+                </form>
+              </>
+            ) : (
+              <>
+                <p className="forgot-sub">Enter OTP and set your new password.</p>
+                <form className="auth-grid" onSubmit={handleForgotResetPassword}>
+                  <div>
+                    <label className="auth-label">Email</label>
+                    <input className="auth-input" value={forgotData.email} readOnly />
+                  </div>
+                  <div>
+                    <label className="auth-label">OTP</label>
+                    <input
+                      className="auth-input"
+                      placeholder="6-digit OTP"
+                      value={forgotData.otp}
+                      onChange={(e) =>
+                        setForgotData((prev) => ({
+                          ...prev,
+                          otp: e.target.value,
+                        }))
+                      }
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="auth-label">New Password</label>
+                    <input
+                      className="auth-input"
+                      type="password"
+                      placeholder="At least 6 characters"
+                      value={forgotData.newPassword}
+                      onChange={(e) =>
+                        setForgotData((prev) => ({
+                          ...prev,
+                          newPassword: e.target.value,
+                        }))
+                      }
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="auth-label">Confirm Password</label>
+                    <input
+                      className="auth-input"
+                      type="password"
+                      placeholder="Confirm new password"
+                      value={forgotData.confirmPassword}
+                      onChange={(e) =>
+                        setForgotData((prev) => ({
+                          ...prev,
+                          confirmPassword: e.target.value,
+                        }))
+                      }
+                      required
+                    />
+                  </div>
+                  <button className="auth-btn" disabled={forgotLoading} type="submit">
+                    {forgotLoading ? "Resetting..." : "Verify OTP & Reset Password"}
+                  </button>
+                </form>
+              </>
+            )}
+
+            {forgotMessage.text && <div className={`auth-msg ${forgotMessage.type}`}>{forgotMessage.text}</div>}
+          </div>
+        </div>
+      )}
     </>
   );
 }
