@@ -1,9 +1,8 @@
 import bcrypt from "bcryptjs";
-import crypto from "crypto";
 import User from "../models/User.js";
 import BlockedEmail from "../models/BlockedEmail.js";
 import { signToken } from "../utils/token.js";
-import { sendAdminApprovalEmail, sendOtpEmail, sendTemporaryPasswordEmail, sendWelcomeEmail } from "../utils/sendOtpEmail.js";
+import { sendAdminApprovalEmail, sendOtpEmail, sendPasswordResetOtpEmail, sendWelcomeEmail } from "../utils/sendOtpEmail.js";
 
 function normalizeRole(inputRole) {
   return inputRole === "admin" ? "admin" : "buyer_seller";
@@ -219,7 +218,7 @@ export async function login(req, res) {
   }
 }
 
-export async function forgotPassword(req, res) {
+export async function requestForgotPasswordOtp(req, res) {
   try {
     const { email } = req.body;
 
@@ -234,23 +233,67 @@ export async function forgotPassword(req, res) {
       return res.status(404).json({ message: "No registered account found for this email" });
     }
 
-    const temporaryPassword = crypto.randomBytes(6).toString("base64url");
-    user.password = await bcrypt.hash(temporaryPassword, 10);
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    user.passwordResetOtpHash = await bcrypt.hash(otp, 10);
+    user.passwordResetOtpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
     await user.save();
 
-    await sendTemporaryPasswordEmail(user.email, user.name, temporaryPassword);
+    await sendPasswordResetOtpEmail(user.email, user.name, otp);
 
     const response = {
-      message: "Temporary password sent to your email. Please login and change it.",
+      message: "Password reset OTP sent to your email",
     };
 
     if (process.env.NODE_ENV !== "production") {
-      response.devTemporaryPassword = temporaryPassword;
+      response.devResetOtp = otp;
     }
 
     return res.status(200).json(response);
   } catch (error) {
-    return res.status(500).json({ message: "Failed to process forgot password request", error: error.message });
+    return res.status(500).json({ message: "Failed to send password reset OTP", error: error.message });
+  }
+}
+
+export async function resetForgotPassword(req, res) {
+  try {
+    const { email, otp, newPassword } = req.body;
+
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({ message: "Email, OTP and new password are required" });
+    }
+
+    if (String(newPassword).length < 6) {
+      return res.status(400).json({ message: "New password must be at least 6 characters" });
+    }
+
+    const normalizedEmail = String(email).toLowerCase().trim();
+    const user = await User.findOne({ email: normalizedEmail });
+
+    if (!user) {
+      return res.status(404).json({ message: "No registered account found for this email" });
+    }
+
+    if (!user.passwordResetOtpHash || !user.passwordResetOtpExpiresAt) {
+      return res.status(400).json({ message: "No password reset OTP request found" });
+    }
+
+    if (new Date() > user.passwordResetOtpExpiresAt) {
+      return res.status(400).json({ message: "OTP expired. Please request a new OTP" });
+    }
+
+    const isOtpValid = await bcrypt.compare(String(otp), user.passwordResetOtpHash);
+    if (!isOtpValid) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    user.password = await bcrypt.hash(String(newPassword), 10);
+    user.passwordResetOtpHash = null;
+    user.passwordResetOtpExpiresAt = null;
+    await user.save();
+
+    return res.status(200).json({ message: "Password reset successful. Please login with your new password." });
+  } catch (error) {
+    return res.status(500).json({ message: "Failed to reset password", error: error.message });
   }
 }
 

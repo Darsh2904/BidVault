@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { loginUser, requestForgotPassword, requestSignupOtp, verifySignupOtp } from "../utils/authApi";
+import { loginUser, requestForgotPasswordOtp, requestSignupOtp, resetForgotPassword, verifySignupOtp } from "../utils/authApi";
 import { useAuth } from "../context/AuthContext";
 
 const pageStyles = `
@@ -256,6 +256,10 @@ export default function AuthPage() {
 
   const [loginData, setLoginData] = useState({ email: "", password: "" });
   const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotOtp, setForgotOtp] = useState("");
+  const [forgotNewPassword, setForgotNewPassword] = useState("");
+  const [forgotConfirmPassword, setForgotConfirmPassword] = useState("");
+  const [forgotStep, setForgotStep] = useState("request");
   const [forgotLoading, setForgotLoading] = useState(false);
   const [showForgotModal, setShowForgotModal] = useState(false);
 
@@ -329,21 +333,62 @@ export default function AuthPage() {
 
   const openForgotModal = () => {
     setForgotEmail(loginData.email || "");
+    setForgotOtp("");
+    setForgotNewPassword("");
+    setForgotConfirmPassword("");
+    setForgotStep("request");
     setShowForgotModal(true);
   };
 
-  const handleForgotPassword = async (e) => {
+  const handleForgotPasswordRequestOtp = async (e) => {
     e.preventDefault();
     setForgotLoading(true);
     setMessage({ type: "", text: "" });
 
     try {
-      const result = await requestForgotPassword({ email: forgotEmail });
-      showMessage("success", result.message || "Temporary password sent to your email.");
-      setShowForgotModal(false);
-      setForgotEmail("");
+      const result = await requestForgotPasswordOtp({ email: forgotEmail });
+      showMessage("success", result.message || "OTP sent to your email.");
+      setForgotStep("verify");
     } catch (error) {
       showMessage("error", error.message || "Unable to process forgot password request.");
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const handleForgotPasswordReset = async (e) => {
+    e.preventDefault();
+
+    if (forgotNewPassword.length < 6) {
+      showMessage("error", "New password must be at least 6 characters.");
+      return;
+    }
+
+    if (forgotNewPassword !== forgotConfirmPassword) {
+      showMessage("error", "New password and confirm password must match.");
+      return;
+    }
+
+    setForgotLoading(true);
+    setMessage({ type: "", text: "" });
+
+    try {
+      const result = await resetForgotPassword({
+        email: forgotEmail,
+        otp: forgotOtp,
+        newPassword: forgotNewPassword,
+      });
+
+      showMessage("success", result.message || "Password reset successful. Please login.");
+      setLoginData((prev) => ({ ...prev, email: forgotEmail }));
+      setShowForgotModal(false);
+      setForgotEmail("");
+      setForgotOtp("");
+      setForgotNewPassword("");
+      setForgotConfirmPassword("");
+      setForgotStep("request");
+    } catch (error) {
+      showMessage("error", error.message || "Unable to reset password.");
     } finally {
       setForgotLoading(false);
     }
@@ -508,9 +553,17 @@ export default function AuthPage() {
 
       {showForgotModal && (
         <div className="auth-modal-overlay" onClick={() => !forgotLoading && setShowForgotModal(false)}>
-          <form className="auth-modal" onSubmit={handleForgotPassword} onClick={(e) => e.stopPropagation()}>
+          <form
+            className="auth-modal"
+            onSubmit={forgotStep === "request" ? handleForgotPasswordRequestOtp : handleForgotPasswordReset}
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 className="auth-modal-title">Forgot Password</h3>
-            <p className="auth-modal-sub">Enter your registered email. We will send a temporary password.</p>
+            <p className="auth-modal-sub">
+              {forgotStep === "request"
+                ? "Enter your registered email. We will send an OTP."
+                : "Enter OTP and set your new password."}
+            </p>
 
             <label className="auth-label">Email</label>
             <input
@@ -519,20 +572,64 @@ export default function AuthPage() {
               placeholder="you@example.com"
               value={forgotEmail}
               onChange={(e) => setForgotEmail(e.target.value)}
+              disabled={forgotStep !== "request"}
               required
             />
+
+            {forgotStep === "verify" && (
+              <>
+                <label className="auth-label">OTP</label>
+                <input
+                  className="auth-input"
+                  type="text"
+                  placeholder="Enter 6-digit OTP"
+                  value={forgotOtp}
+                  onChange={(e) => setForgotOtp(e.target.value)}
+                  required
+                />
+
+                <label className="auth-label">New Password</label>
+                <input
+                  className="auth-input"
+                  type="password"
+                  placeholder="At least 6 characters"
+                  value={forgotNewPassword}
+                  onChange={(e) => setForgotNewPassword(e.target.value)}
+                  required
+                />
+
+                <label className="auth-label">Confirm Password</label>
+                <input
+                  className="auth-input"
+                  type="password"
+                  placeholder="Re-enter new password"
+                  value={forgotConfirmPassword}
+                  onChange={(e) => setForgotConfirmPassword(e.target.value)}
+                  required
+                />
+              </>
+            )}
 
             <div className="auth-modal-actions">
               <button
                 type="button"
                 className="auth-modal-btn"
                 disabled={forgotLoading}
-                onClick={() => setShowForgotModal(false)}
+                onClick={() => {
+                  setShowForgotModal(false);
+                  setForgotStep("request");
+                }}
               >
                 Cancel
               </button>
               <button type="submit" className="auth-modal-btn primary" disabled={forgotLoading}>
-                {forgotLoading ? "Sending..." : "Send Password"}
+                {forgotLoading
+                  ? forgotStep === "request"
+                    ? "Sending OTP..."
+                    : "Updating..."
+                  : forgotStep === "request"
+                  ? "Send OTP"
+                  : "Set New Password"}
               </button>
             </div>
           </form>
