@@ -6,6 +6,7 @@ import { useTheme } from "../context/ThemeContext";
 import {
   approveAdminRequest,
   deleteAndBlockUser,
+  getAdminSupportRequests,
   getAdminUsers,
   getApprovedAuctions,
   getMyBidAuctions,
@@ -16,6 +17,7 @@ import {
   raiseEscrowDispute,
   releaseEscrowFunds,
   requestEscrowRelease,
+  updateAdminSupportRequestStatus,
   updateAdminUserStatus,
 } from "../utils/authApi";
 
@@ -1255,9 +1257,33 @@ function AdminDash({ user, token }) {
   const [adminNotice, setAdminNotice] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [supportTickets, setSupportTickets] = useState([]);
+  const [supportSearchInput, setSupportSearchInput] = useState("");
+  const [supportSearchTerm, setSupportSearchTerm] = useState("");
+  const [supportStatusFilter, setSupportStatusFilter] = useState("all");
+  const [supportSortBy, setSupportSortBy] = useState("createdAt");
+  const [supportSortOrder, setSupportSortOrder] = useState("desc");
+  const [supportPage, setSupportPage] = useState(1);
+  const [supportPageSize, setSupportPageSize] = useState(10);
+  const [supportLoading, setSupportLoading] = useState(false);
+  const [exportingReport, setExportingReport] = useState(false);
+  const [supportUpdatingId, setSupportUpdatingId] = useState("");
+  const [supportSummary, setSupportSummary] = useState({ total: 0, open: 0, inProgress: 0, resolved: 0, closed: 0 });
+  const [supportPagination, setSupportPagination] = useState({
+    page: 1,
+    limit: 10,
+    total: 0,
+    totalPages: 1,
+    hasPrev: false,
+    hasNext: false,
+  });
   const displayName = getDisplayName(user);
+  const [users, setUsers] = useState([]);
+  const [liveAuctions, setLiveAuctions] = useState([]);
+  const openSupportTickets = (supportSummary.open || 0) + (supportSummary.inProgress || 0);
   const sideItems = [
     { icon: "🎯", label: "Overview" },
+    { icon: "🎫", label: "Support Tickets", badge: openSupportTickets > 0 ? openSupportTickets : null },
     { icon: "👥", label: "User Management" },
     { icon: "🔨", label: "Auction Monitor" },
     { icon: "📊", label: "Reports" },
@@ -1265,8 +1291,6 @@ function AdminDash({ user, token }) {
     { icon: "⚖️", label: "Disputes" },
     { icon: "⚙️", label: "System Config" },
   ];
-  const [users, setUsers] = useState([]);
-  const [liveAuctions, setLiveAuctions] = useState([]);
   const revenueData = [12000, 18000, 15000, 22000, 19000, 28000, 35000];
   const regData = [120, 200, 160, 280, 240, 310, 180];
 
@@ -1280,6 +1304,18 @@ function AdminDash({ user, token }) {
       entry.status.toLowerCase().includes(query)
     );
   });
+
+  const supportStatusMeta = {
+    open: { label: "OPEN", color: "var(--red)", background: "rgba(255,68,68,.15)" },
+    in_progress: { label: "IN PROGRESS", color: "var(--gold)", background: "rgba(240,180,41,.15)" },
+    resolved: { label: "RESOLVED", color: "var(--green)", background: "rgba(0,196,140,.15)" },
+    closed: { label: "CLOSED", color: "var(--muted)", background: "rgba(136,136,170,.15)" },
+  };
+
+  const formatSupportDate = (value) => {
+    if (!value) return "-";
+    return new Date(value).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
+  };
 
   const pushNotice = (message) => {
     setAdminNotice(message);
@@ -1311,38 +1347,158 @@ function AdminDash({ user, token }) {
     loadAdminData();
   }, [token]);
 
-  const handleExport = () => {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSupportPage(1);
+      setSupportSearchTerm(supportSearchInput.trim());
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [supportSearchInput]);
+
+  useEffect(() => {
+    if (!token) return;
+
+    let cancelled = false;
+
+    const loadSupportTickets = async () => {
+      setSupportLoading(true);
+      try {
+        const data = await getAdminSupportRequests(token, {
+          status: supportStatusFilter,
+          q: supportSearchTerm,
+          page: supportPage,
+          limit: supportPageSize,
+          sortBy: supportSortBy,
+          sortOrder: supportSortOrder,
+        });
+
+        if (cancelled) return;
+
+        const pagination = data?.pagination || {
+          page: supportPage,
+          limit: supportPageSize,
+          total: 0,
+          totalPages: 1,
+          hasPrev: false,
+          hasNext: false,
+        };
+
+        if (supportPage > pagination.totalPages && pagination.totalPages >= 1) {
+          setSupportPage(pagination.totalPages);
+          return;
+        }
+
+        setSupportTickets(data?.tickets || []);
+        setSupportSummary(data?.summary || { total: 0, open: 0, inProgress: 0, resolved: 0, closed: 0 });
+        setSupportPagination(pagination);
+      } catch (error) {
+        if (!cancelled) {
+          pushNotice(error.message || "Failed to load support tickets.");
+        }
+      } finally {
+        if (!cancelled) {
+          setSupportLoading(false);
+        }
+      }
+    };
+
+    loadSupportTickets();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token, supportStatusFilter, supportSearchTerm, supportPage, supportPageSize, supportSortBy, supportSortOrder]);
+
+  const fetchAllSupportTicketsForExport = async () => {
+    const exportFilters = {
+      status: supportStatusFilter,
+      q: supportSearchInput.trim(),
+      page: 1,
+      limit: 50,
+      sortBy: supportSortBy,
+      sortOrder: supportSortOrder,
+    };
+    const allTickets = [];
+    const maxPages = 500;
+    let page = 1;
+    let totalPages = 1;
+
+    while (page <= totalPages && page <= maxPages) {
+      const data = await getAdminSupportRequests(token, { ...exportFilters, page });
+      const pageTickets = Array.isArray(data?.tickets) ? data.tickets : [];
+
+      allTickets.push(...pageTickets);
+      totalPages = Math.max(Number(data?.pagination?.totalPages) || 1, 1);
+      page += 1;
+    }
+
+    if (page > maxPages && totalPages > maxPages) {
+      throw new Error("Export limit exceeded. Please narrow your support ticket filters and try again.");
+    }
+
+    return allTickets;
+  };
+
+  const handleExport = async () => {
+    if (exportingReport) return;
+
+    setExportingReport(true);
     const headingUsers = ["Name", "Email", "Role", "Status", "Joined"];
     const headingAuctions = ["Item", "Seller", "Current Bid", "Category", "Timer"];
+    const headingSupport = ["Ticket ID", "Name", "Email", "Topic", "Status", "Order/Txn", "Created", "Message"];
 
     const toCsvRow = (arr) =>
       arr
         .map((cell) => `"${String(cell).replace(/"/g, '""')}"`)
         .join(",");
 
-    const rows = [
-      "Admin Dashboard Export",
-      "",
-      "User Management",
-      toCsvRow(headingUsers),
-      ...users.map((entry) => toCsvRow([entry.name, entry.email, entry.role, entry.status, entry.joined])),
-      "",
-      "Live Auction Monitor",
-      toCsvRow(headingAuctions),
-      ...liveAuctions.map((entry) => toCsvRow([entry.title, entry.seller, entry.bid, entry.cat, entry.timer || "-"])),
-    ];
+    try {
+      const exportSupportTickets = await fetchAllSupportTicketsForExport();
 
-    const blob = new Blob([rows.join("\n")], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `admin-report-${new Date().toISOString().slice(0, 10)}.csv`;
-    document.body.appendChild(anchor);
-    anchor.click();
-    document.body.removeChild(anchor);
-    URL.revokeObjectURL(url);
+      const rows = [
+        "Admin Dashboard Export",
+        "",
+        "User Management",
+        toCsvRow(headingUsers),
+        ...users.map((entry) => toCsvRow([entry.name, entry.email, entry.role, entry.status, entry.joined])),
+        "",
+        "Live Auction Monitor",
+        toCsvRow(headingAuctions),
+        ...liveAuctions.map((entry) => toCsvRow([entry.title, entry.seller, entry.bid, entry.cat, entry.timer || "-"])),
+        "",
+        "Support Tickets",
+        toCsvRow(headingSupport),
+        ...exportSupportTickets.map((ticket) =>
+          toCsvRow([
+            ticket.id,
+            ticket.fullName,
+            ticket.email,
+            ticket.topic,
+            ticket.status,
+            ticket.orderId || "-",
+            formatSupportDate(ticket.createdAt),
+            ticket.message,
+          ])
+        ),
+      ];
 
-    pushNotice("Report exported successfully.");
+      const blob = new Blob([rows.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `admin-report-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      URL.revokeObjectURL(url);
+
+      pushNotice(`Report exported successfully with ${exportSupportTickets.length} support tickets.`);
+    } catch (error) {
+      pushNotice(error.message || "Failed to export report.");
+    } finally {
+      setExportingReport(false);
+    }
   };
 
   const handleEmergencyToggle = () => {
@@ -1427,10 +1583,48 @@ function AdminDash({ user, token }) {
       .catch((error) => pushNotice(error.message));
   };
 
+  const handleSupportStatusUpdate = async (ticketId, nextStatus) => {
+    if (!ticketId || !nextStatus) return;
+
+    setSupportUpdatingId(ticketId);
+    try {
+      await updateAdminSupportRequestStatus(ticketId, nextStatus, token);
+
+      const refreshed = await getAdminSupportRequests(token, {
+        status: supportStatusFilter,
+        q: supportSearchTerm,
+        page: supportPage,
+        limit: supportPageSize,
+        sortBy: supportSortBy,
+        sortOrder: supportSortOrder,
+      });
+
+      setSupportTickets(refreshed?.tickets || []);
+      setSupportSummary(refreshed?.summary || { total: 0, open: 0, inProgress: 0, resolved: 0, closed: 0 });
+      const nextPagination = refreshed?.pagination || {
+        page: supportPage,
+        limit: supportPageSize,
+        total: 0,
+        totalPages: 1,
+        hasPrev: false,
+        hasNext: false,
+      };
+
+      setSupportPagination(nextPagination);
+      setSupportPage(nextPagination.page || 1);
+      pushNotice("Support ticket status updated.");
+    } catch (error) {
+      pushNotice(error.message || "Failed to update support ticket status.");
+    } finally {
+      setSupportUpdatingId("");
+    }
+  };
+
   const blockedActionStyle = emergencyMode ? { opacity: 0.6, cursor: "not-allowed" } : undefined;
 
   const adminSectionMap = {
     Overview: "overview",
+    "Support Tickets": "supportTickets",
     "User Management": "users",
     "Auction Monitor": "auctions",
     Reports: "reports",
@@ -1477,7 +1671,17 @@ function AdminDash({ user, token }) {
             </div>
           </div>
           <div style={{ display: "flex", gap: ".6rem" }}>
-            <button className="act-btn view" style={{ padding: ".5rem 1rem" }} onClick={handleExport}>📊 Export</button>
+            <button
+              className="act-btn view"
+              style={{
+                padding: ".5rem 1rem",
+                ...(exportingReport ? { opacity: 0.7, cursor: "wait" } : {}),
+              }}
+              onClick={handleExport}
+              disabled={exportingReport}
+            >
+              {exportingReport ? "Preparing Export..." : "📊 Export"}
+            </button>
             <button className="act-btn suspend" style={{ padding: ".5rem 1.1rem", borderRadius: "10px" }} onClick={handleEmergencyToggle}>
               {emergencyMode ? "Resume Operations" : "Emergency Stop"}
             </button>
@@ -1511,7 +1715,7 @@ function AdminDash({ user, token }) {
             { ico:"🔨", val:String(liveAuctions.length), label:"Live Auctions", trend:"Under monitoring", cls:"gold", vcls:"gold" },
             { ico:"💰", val:"₹8.4M", label:"Revenue MTD", trend:"↑ 18%", cls:"green", vcls:"green" },
             { ico:"🚨", val:String(fraudAlerts), label:"Fraud Alerts", trend: fraudAlerts > 0 ? "Review needed" : "All reviewed", cls:"red", vcls:"red", tcls: fraudAlerts > 0 ? "warn" : "up" },
-            { ico:"⚖️", val:"7", label:"Open Disputes", trend:"↑ 3 new", cls:"blue", tcls:"warn" },
+            { ico:"🎫", val:String(openSupportTickets), label:"Open Tickets", trend: openSupportTickets > 0 ? "Needs review" : "All cleared", cls:"blue", tcls: openSupportTickets > 0 ? "warn" : "up" },
           ].map(s => (
             <div key={s.label} className={`stat-card ${s.cls}`}>
               <div className="stat-ico">{s.ico}</div>
@@ -1520,6 +1724,175 @@ function AdminDash({ user, token }) {
               <div className={`stat-trend ${s.tcls || "up"}`}>{s.trend}</div>
             </div>
           ))}
+        </div>
+
+        <div ref={setAdminSectionRef("supportTickets")} />
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: ".75rem", gap: ".6rem", flexWrap: "wrap" }}>
+          <div className="sec-label" style={{ margin: 0 }}>Support Tickets</div>
+          <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
+            <input
+              className="search-input"
+              placeholder="Search tickets..."
+              value={supportSearchInput}
+              onChange={(event) => setSupportSearchInput(event.target.value)}
+            />
+            <select
+              className="search-input"
+              style={{ width: "160px" }}
+              value={supportStatusFilter}
+              onChange={(event) => {
+                setSupportStatusFilter(event.target.value);
+                setSupportPage(1);
+              }}
+            >
+              <option value="all">All Statuses</option>
+              <option value="open">Open</option>
+              <option value="in_progress">In Progress</option>
+              <option value="resolved">Resolved</option>
+              <option value="closed">Closed</option>
+            </select>
+            <select
+              className="search-input"
+              style={{ width: "150px" }}
+              value={supportSortBy}
+              onChange={(event) => {
+                setSupportSortBy(event.target.value);
+                setSupportPage(1);
+              }}
+            >
+              <option value="createdAt">Sort: Created</option>
+              <option value="updatedAt">Sort: Updated</option>
+              <option value="status">Sort: Status</option>
+              <option value="topic">Sort: Topic</option>
+              <option value="fullName">Sort: Name</option>
+              <option value="email">Sort: Email</option>
+            </select>
+            <select
+              className="search-input"
+              style={{ width: "120px" }}
+              value={supportSortOrder}
+              onChange={(event) => {
+                setSupportSortOrder(event.target.value);
+                setSupportPage(1);
+              }}
+            >
+              <option value="desc">Newest</option>
+              <option value="asc">Oldest</option>
+            </select>
+            <select
+              className="search-input"
+              style={{ width: "105px" }}
+              value={String(supportPageSize)}
+              onChange={(event) => {
+                setSupportPageSize(Number(event.target.value) || 10);
+                setSupportPage(1);
+              }}
+            >
+              <option value="10">10 / page</option>
+              <option value="20">20 / page</option>
+              <option value="50">50 / page</option>
+            </select>
+          </div>
+        </div>
+        <div className="tbl-wrap" style={{ marginBottom: "1.75rem" }}>
+          <table>
+            <thead><tr>
+              <th>Ticket</th><th>Name</th><th>Email</th><th>Topic</th><th>Message</th><th>Status</th><th>Created</th><th>Update</th>
+            </tr></thead>
+            <tbody>
+              {supportLoading && (
+                <tr>
+                  <td colSpan={8} className="td-muted" style={{ textAlign: "center", padding: "1.1rem" }}>
+                    Loading support tickets...
+                  </td>
+                </tr>
+              )}
+
+              {!supportLoading && supportTickets.map((ticket) => {
+                const statusMeta = supportStatusMeta[ticket.status] || supportStatusMeta.open;
+                const shortId = String(ticket.id || "").slice(-6).toUpperCase();
+                const fullMessage = String(ticket.message || "");
+                const shortMessage = fullMessage.length > 80 ? `${fullMessage.slice(0, 80)}...` : fullMessage;
+
+                return (
+                  <tr key={ticket.id}>
+                    <td>#{shortId || "-"}</td>
+                    <td>{ticket.fullName}</td>
+                    <td className="td-muted">{ticket.email}</td>
+                    <td className="td-muted">{String(ticket.topic || "other").replace("_", " ").toUpperCase()}</td>
+                    <td title={fullMessage}>{shortMessage}</td>
+                    <td>
+                      <span className="pill" style={{ color: statusMeta.color, background: statusMeta.background }}>
+                        {statusMeta.label}
+                      </span>
+                    </td>
+                    <td className="td-muted">{formatSupportDate(ticket.createdAt)}</td>
+                    <td>
+                      <select
+                        className="search-input"
+                        style={{ width: "145px" }}
+                        value={ticket.status}
+                        disabled={emergencyMode || supportUpdatingId === ticket.id}
+                        onChange={(event) => handleSupportStatusUpdate(ticket.id, event.target.value)}
+                      >
+                        <option value="open">Open</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="resolved">Resolved</option>
+                        <option value="closed">Closed</option>
+                      </select>
+                    </td>
+                  </tr>
+                );
+              })}
+
+              {!supportLoading && supportTickets.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="td-muted" style={{ textAlign: "center", padding: "1.1rem" }}>
+                    No support tickets match current filters.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+
+          <div style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: ".75rem",
+            flexWrap: "wrap",
+            padding: "0.7rem 1rem",
+            borderTop: "1px solid var(--border)",
+          }}>
+            <div className="td-muted" style={{ fontSize: ".8rem" }}>
+              Showing {supportPagination.total === 0 ? 0 : ((supportPagination.page - 1) * supportPagination.limit) + 1}
+              -{((supportPagination.page - 1) * supportPagination.limit) + supportTickets.length} of {supportPagination.total}
+            </div>
+
+            <div style={{ display: "flex", gap: ".5rem", alignItems: "center" }}>
+              <button
+                className="act-btn view"
+                disabled={supportLoading || !supportPagination.hasPrev}
+                style={(!supportPagination.hasPrev || supportLoading) ? blockedActionStyle : undefined}
+                onClick={() => setSupportPage((prev) => Math.max(prev - 1, 1))}
+              >
+                Prev
+              </button>
+
+              <span className="td-muted" style={{ fontSize: ".8rem" }}>
+                Page {supportPagination.page} / {supportPagination.totalPages}
+              </span>
+
+              <button
+                className="act-btn view"
+                disabled={supportLoading || !supportPagination.hasNext}
+                style={(!supportPagination.hasNext || supportLoading) ? blockedActionStyle : undefined}
+                onClick={() => setSupportPage((prev) => prev + 1)}
+              >
+                Next
+              </button>
+            </div>
+          </div>
         </div>
 
         <div ref={setAdminSectionRef("escrow")} />

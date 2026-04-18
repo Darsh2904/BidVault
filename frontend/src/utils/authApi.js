@@ -164,6 +164,59 @@ export async function deleteAndBlockUser(userId, token) {
   return parseResponse(response);
 }
 
+export async function getAdminSupportRequests(token, filters = {}) {
+  const query = new URLSearchParams();
+
+  if (filters.status && filters.status !== "all") {
+    query.set("status", filters.status);
+  }
+
+  if (filters.q && String(filters.q).trim()) {
+    query.set("q", String(filters.q).trim());
+  }
+
+  if (filters.page) {
+    query.set("page", String(filters.page));
+  }
+
+  if (filters.limit) {
+    query.set("limit", String(filters.limit));
+  }
+
+  if (filters.sortBy && String(filters.sortBy).trim()) {
+    query.set("sortBy", String(filters.sortBy).trim());
+  }
+
+  if (filters.sortOrder && String(filters.sortOrder).trim()) {
+    query.set("sortOrder", String(filters.sortOrder).trim());
+  }
+
+  const queryString = query.toString();
+  const url = `${API_BASE}/admin/support/requests${queryString ? `?${queryString}` : ""}`;
+
+  const response = await fetch(url, {
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(token),
+    },
+  });
+
+  return parseResponse(response);
+}
+
+export async function updateAdminSupportRequestStatus(ticketId, status, token) {
+  const response = await fetch(`${API_BASE}/admin/support/requests/${ticketId}/status`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(token),
+    },
+    body: JSON.stringify({ status }),
+  });
+
+  return parseResponse(response);
+}
+
 export async function getPendingAuctionListings(token) {
   const response = await fetch(`${API_BASE}/admin/auctions/pending`, {
     headers: {
@@ -323,6 +376,23 @@ export async function getMyEscrowTransactions(token) {
       ...authHeaders(token),
     },
   });
+
+  return parseResponse(response);
+}
+
+export async function submitHelpCenterRequest(payload, token) {
+  const response = await fetchWithTimeout(
+    `${API_BASE}/support/requests`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...authHeaders(token),
+      },
+      body: JSON.stringify(payload),
+    },
+    15000
+  );
 
   return parseResponse(response);
 }

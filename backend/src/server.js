@@ -10,6 +10,7 @@ import adminRoutes from "./routes/adminRoutes.js";
 import auctionRoutes from "./routes/auctionRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
+import supportRoutes from "./routes/supportRoutes.js";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -87,6 +88,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/auctions", auctionRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/payments", paymentRoutes);
+app.use("/api/support", supportRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ message: "Route not found" });

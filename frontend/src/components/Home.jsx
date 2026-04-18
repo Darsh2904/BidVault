@@ -374,6 +374,43 @@ const categories = [
   { emoji: "🃏", name: "Collectibles", count: "2,108 items" },
 ];
 
+const socialLinks = [
+  { label: "X", short: "𝕏", href: "https://x.com" },
+  { label: "LinkedIn", short: "in", href: "https://www.linkedin.com/in/darsh6608/" },
+  { label: "Instagram", short: "ig", href: "https://www.instagram.com/darsh6608" },
+  { label: "Facebook", short: "fb", href: "https://www.facebook.com/share/19uwienjtt/" },
+];
+
+const footerSections = [
+  {
+    title: "Platform",
+    links: [
+      { label: "Browse Auctions", to: "/browse" },
+      { label: "Sell an Item", to: "/create-auction" },
+      { label: "Pricing", to: "/dashboard" },
+      { label: "API Docs", href: "https://github.com/Darsh2904/BidVault#readme", external: true },
+    ],
+  },
+  {
+    title: "Company",
+    links: [
+      { label: "About Us", to: "/" },
+      { label: "Careers", to: "/dashboard" },
+      { label: "Blog", to: "/auctions" },
+      { label: "Press", href: "https://github.com/Darsh2904/BidVault", external: true },
+    ],
+  },
+  {
+    title: "Support",
+    links: [
+      { label: "Help Center", to: "/help-center" },
+      { label: "Contact Us", href: "mailto:darshnation@gmail.com" },
+      { label: "Trust & Safety", to: "/dashboard" },
+      { label: "Disputes", to: "/dashboard" },
+    ],
+  },
+];
+
 export default function BidVault() {
   const [favs, setFavs] = useState({});
   const [showBellToast, setShowBellToast] = useState(false);
@@ -601,28 +638,46 @@ export default function BidVault() {
               <div className="nav-logo">BidVault <span style={{ color: "var(--gold)" }}>⚡</span></div>
               <p>The world's most secure and transparent online auction platform connecting buyers and sellers globally.</p>
               <div className="footer-socials">
-                {["𝕏","in","ig","fb"].map(s => <button key={s} className="social-btn">{s}</button>)}
+                {socialLinks.map((social) => (
+                  <a
+                    key={social.label}
+                    className="social-btn"
+                    href={social.href}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label={social.label}
+                  >
+                    {social.short}
+                  </a>
+                ))}
               </div>
             </div>
-            <div className="footer-col">
-              <h4>Platform</h4>
-              {["Browse Auctions","Sell an Item","Pricing","API Docs"].map(l => <a key={l} href="#">{l}</a>)}
-            </div>
-            <div className="footer-col">
-              <h4>Company</h4>
-              {["About Us","Careers","Blog","Press"].map(l => <a key={l} href="#">{l}</a>)}
-            </div>
-            <div className="footer-col">
-              <h4>Support</h4>
-              {["Help Center","Contact Us","Trust & Safety","Disputes"].map(l => <a key={l} href="#">{l}</a>)}
-            </div>
+            {footerSections.map((section) => (
+              <div className="footer-col" key={section.title}>
+                <h4>{section.title}</h4>
+                {section.links.map((link) => (
+                  link.to ? (
+                    <Link key={link.label} to={link.to}>{link.label}</Link>
+                  ) : (
+                    <a
+                      key={link.label}
+                      href={link.href}
+                      target={link.external ? "_blank" : undefined}
+                      rel={link.external ? "noreferrer" : undefined}
+                    >
+                      {link.label}
+                    </a>
+                  )
+                ))}
+              </div>
+            ))}
           </div>
           <div className="footer-bottom">
             <p>© 2026 Darsh Patel. All rights reserved.</p>
             <div className="footer-legal">
-              <a href="#">Privacy</a><span> · </span>
-              <a href="#">Terms</a><span> · </span>
-              <a href="#">Cookies</a>
+              <Link to="/auth">Privacy</Link><span> · </span>
+              <Link to="/auth">Terms</Link><span> · </span>
+              <Link to="/auth">Cookies</Link>
             </div>
           </div>
         </div>
