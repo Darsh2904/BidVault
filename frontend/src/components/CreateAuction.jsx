@@ -75,6 +75,34 @@ const styles = `
     align-items: center;
   }
 
+  .nav-menu-btn {
+    display: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--bg3);
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .nav-menu-btn span {
+    width: 16px;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--text);
+    transition: transform 0.2s ease, opacity 0.2s ease;
+  }
+
+  .nav-menu-btn.open span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+  .nav-menu-btn.open span:nth-child(2) { opacity: 0; }
+  .nav-menu-btn.open span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+
+  .mobile-nav-menu { display: none; }
+
   .icon-btn {
     width: 40px;
     height: 40px;
@@ -324,6 +352,35 @@ const styles = `
 
   @media (max-width: 900px) {
     .links { display: none; }
+    .nav-menu-btn { display: inline-flex; }
+    .mobile-nav-menu {
+      display: flex;
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 1rem;
+      right: 1rem;
+      flex-direction: column;
+      gap: 0.15rem;
+      padding: 0.45rem;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--bg3);
+      box-shadow: 0 14px 28px rgba(0, 0, 0, 0.35);
+      z-index: 160;
+    }
+    .mobile-nav-menu a {
+      text-decoration: none;
+      color: var(--text-muted);
+      padding: 0.58rem 0.62rem;
+      border-radius: 8px;
+      font-size: 0.86rem;
+      font-weight: 600;
+    }
+    .mobile-nav-menu a:hover,
+    .mobile-nav-menu a.active {
+      color: var(--text);
+      background: var(--bg4);
+    }
     .grid, .actions { grid-template-columns: 1fr; }
     .input, .select, .textarea, .btn-lg { font-size: 0.82rem; }
     .upload-title { font-size: 0.95rem; }
@@ -368,10 +425,12 @@ export default function CreateAuction() {
   const [images, setImages] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [errorText, setErrorText] = useState("");
   const [successText, setSuccessText] = useState("");
   const [inlineError, setInlineError] = useState({ key: "", text: "" });
   const isLightTheme = theme === "light";
+  const closeMobileMenu = () => setIsMobileMenuOpen(false);
 
   const onChange = (key) => (event) => {
     const nextValue = event.target.value;
@@ -588,11 +647,30 @@ export default function CreateAuction() {
           <Link to="/auctions">Auctions</Link>
           <Link to="/dashboard">Dashboard</Link>
         </div>
+        <button
+          className={`nav-menu-btn ${isMobileMenuOpen ? "open" : ""}`}
+          type="button"
+          aria-label="Toggle navigation menu"
+          aria-expanded={isMobileMenuOpen}
+          onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+        >
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
         <div className="nav-right">
           <button className="icon-btn" onClick={toggleTheme} title="Toggle theme">{isLightTheme ? "☀️" : "🌙"}</button>
           <button className="icon-btn">🔔</button>
           <button className="btn" onClick={() => navigate("/dashboard")}>Dashboard</button>
         </div>
+        {isMobileMenuOpen && (
+          <div className="mobile-nav-menu">
+            <Link to="/" onClick={closeMobileMenu}>Home</Link>
+            <Link to="/browse" onClick={closeMobileMenu}>Browse</Link>
+            <Link to="/auctions" onClick={closeMobileMenu}>Auctions</Link>
+            <Link to="/dashboard" onClick={closeMobileMenu}>Dashboard</Link>
+          </div>
+        )}
       </nav>
 
       <section className="page">

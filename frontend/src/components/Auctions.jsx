@@ -35,6 +35,30 @@ const styles = `
   .nav-links a { color:var(--text-muted); text-decoration:none; font-size:0.88rem; font-weight:500; cursor:pointer; transition:color .2s; }
   .nav-links a:hover { color:var(--text); }
   .nav-right { display:flex; align-items:center; gap:.75rem; }
+  .nav-menu-btn {
+    display: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg3);
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .nav-menu-btn span {
+    width: 16px;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--text);
+    transition: transform 0.2s ease, opacity 0.2s ease;
+  }
+  .nav-menu-btn.open span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+  .nav-menu-btn.open span:nth-child(2) { opacity: 0; }
+  .nav-menu-btn.open span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+  .mobile-nav-menu { display: none; }
   .nav-icon-btn { width:40px; height:40px; border-radius:8px; background:var(--bg3); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:1rem; }
   .nav-icon-btn.notif { background:#2a1f5e; border-color:var(--purple); }
   .btn-outline { padding:.35rem .85rem; border-radius:8px; border:1px solid rgba(255,255,255,.2); background:transparent; color:var(--text); font-family:'DM Sans',sans-serif; font-size:.8rem; font-weight:600; cursor:pointer; transition:all .2s; }
@@ -211,6 +235,34 @@ const styles = `
   @media (max-width: 1024px) {
     .navbar { padding: 0 1rem; }
     .nav-links { display: none; }
+    .nav-menu-btn { display: inline-flex; }
+    .mobile-nav-menu {
+      display: flex;
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 1rem;
+      right: 1rem;
+      flex-direction: column;
+      gap: 0.15rem;
+      padding: 0.45rem;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--bg3);
+      box-shadow: 0 14px 28px rgba(0, 0, 0, 0.35);
+      z-index: 160;
+    }
+    .mobile-nav-menu a {
+      text-decoration: none;
+      color: var(--text-muted);
+      padding: 0.58rem 0.62rem;
+      border-radius: 8px;
+      font-size: 0.86rem;
+      font-weight: 600;
+    }
+    .mobile-nav-menu a:hover {
+      color: var(--text);
+      background: var(--bg4);
+    }
     .page { padding: 1.5rem 1rem 2rem; gap: 1.5rem; }
   }
 
@@ -294,8 +346,10 @@ export default function AuctionPage() {
   const [toast, setToast] = useState(false);
   const [actionError, setActionError] = useState("");
   const [showBellToast, setShowBellToast] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [hh, mm, ss] = useCountdown(0, 25, 23);
   const isLightTheme = theme === "light";
+  const closeMobileMenu = () => setIsMobileMenuOpen(false);
 
   const requireLogin = () => {
     if (isAuthenticated && token) return true;
@@ -337,11 +391,30 @@ export default function AuctionPage() {
           <Link to="/auctions">Auctions</Link>
           <Link to="/dashboard">Dashboard</Link>
         </div>
+        <button
+          className={`nav-menu-btn ${isMobileMenuOpen ? "open" : ""}`}
+          type="button"
+          aria-label="Toggle navigation menu"
+          aria-expanded={isMobileMenuOpen}
+          onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+        >
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
         <div className="nav-right">
           <button className="nav-icon-btn" onClick={toggleTheme} title="Toggle theme">{isLightTheme ? "☀️" : "🌙"}</button>
           <button className="nav-icon-btn notif" onClick={triggerBellToast}>🔔</button>
           <AuthNavActions />
         </div>
+        {isMobileMenuOpen && (
+          <div className="mobile-nav-menu">
+            <Link to="/" onClick={closeMobileMenu}>Home</Link>
+            <Link to="/browse" onClick={closeMobileMenu}>Browse</Link>
+            <Link to="/auctions" onClick={closeMobileMenu}>Auctions</Link>
+            <Link to="/dashboard" onClick={closeMobileMenu}>Dashboard</Link>
+          </div>
+        )}
       </nav>
 
       {/* PAGE */}

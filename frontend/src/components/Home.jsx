@@ -47,6 +47,34 @@ const styles = `
 
   body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; width: 100%; overflow-x: hidden; zoom: 1; }
 
+  @keyframes fadeUpIn {
+    from { opacity: 0; transform: translate3d(0, 24px, 0); }
+    to { opacity: 1; transform: translate3d(0, 0, 0); }
+  }
+
+  @keyframes heroGlowShift {
+    0% { transform: translate3d(-1.5%, 0, 0) scale(1); opacity: 0.9; }
+    100% { transform: translate3d(1.5%, 2%, 0) scale(1.03); opacity: 1; }
+  }
+
+  .hero-load { animation: fadeUpIn 0.68s cubic-bezier(0.22, 1, 0.36, 1) both; }
+  .delay-1 { animation-delay: 0.08s; }
+  .delay-2 { animation-delay: 0.2s; }
+  .delay-3 { animation-delay: 0.34s; }
+  .delay-4 { animation-delay: 0.48s; }
+
+  .reveal { opacity: 1; transform: translate3d(0, 0, 0); }
+  .motion-safe .reveal {
+    opacity: 0;
+    transform: translate3d(0, 34px, 0);
+    transition: opacity 0.72s ease, transform 0.72s cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: opacity, transform;
+  }
+  .motion-safe .reveal.in-view {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+
   /* ── NAVBAR ── */
   .navbar {
     position: sticky; top: 0; z-index: 100;
@@ -71,6 +99,30 @@ const styles = `
   }
   .nav-links a:hover, .nav-links a.active { color: var(--text); }
   .nav-right { display: flex; align-items: center; gap: 0.75rem; }
+  .nav-menu-btn {
+    display: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg3);
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .nav-menu-btn span {
+    width: 16px;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--text);
+    transition: transform 0.2s ease, opacity 0.2s ease;
+  }
+  .nav-menu-btn.open span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+  .nav-menu-btn.open span:nth-child(2) { opacity: 0; }
+  .nav-menu-btn.open span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+  .mobile-nav-menu { display: none; }
   .nav-icon-btn {
     width: 40px; height: 40px; border-radius: 8px;
     background: var(--bg3); border: 1px solid var(--border);
@@ -118,6 +170,7 @@ const styles = `
     content: ''; position: absolute; inset: 0;
     background: radial-gradient(ellipse 80% 60% at 50% 100%, rgba(108,92,231,0.1), transparent);
     pointer-events: none;
+    animation: heroGlowShift 6.5s ease-in-out infinite alternate;
   }
   .hero-badge {
     display: inline-flex; align-items: center; gap: 6px;
@@ -320,6 +373,7 @@ const styles = `
   @media (max-width: 768px) {
     .navbar { min-height: 64px; height: auto; padding: 0.55rem 0.8rem; gap: 0.55rem; }
     .nav-links { display: none; }
+    .nav-menu-btn { display: inline-flex; }
     .nav-right {
       gap: 0.45rem;
       flex-wrap: nowrap;
@@ -337,6 +391,34 @@ const styles = `
       white-space: nowrap;
       padding: 0.35rem 0.62rem;
       font-size: 0.74rem;
+    }
+    .mobile-nav-menu {
+      display: flex;
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0.8rem;
+      right: 0.8rem;
+      flex-direction: column;
+      gap: 0.15rem;
+      padding: 0.45rem;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--bg3);
+      box-shadow: 0 14px 28px rgba(0, 0, 0, 0.35);
+      z-index: 150;
+    }
+    .mobile-nav-menu a {
+      text-decoration: none;
+      color: var(--text-muted);
+      padding: 0.58rem 0.62rem;
+      border-radius: 8px;
+      font-size: 0.86rem;
+      font-weight: 600;
+    }
+    .mobile-nav-menu a:hover,
+    .mobile-nav-menu a.active {
+      color: var(--text);
+      background: var(--bg4);
     }
     .hero-ctas { width: 100%; }
     .cta-start,
@@ -414,6 +496,7 @@ const footerSections = [
 export default function BidVault() {
   const [favs, setFavs] = useState({});
   const [showBellToast, setShowBellToast] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [liveAuctionsCount, setLiveAuctionsCount] = useState(null);
   const [liveCountError, setLiveCountError] = useState(false);
   const [actionError, setActionError] = useState("");
@@ -450,7 +533,44 @@ export default function BidVault() {
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (prefersReducedMotion) return undefined;
+
+    const root = document.documentElement;
+    root.classList.add("motion-safe");
+
+    const revealTargets = Array.from(document.querySelectorAll(".reveal"));
+    if (!revealTargets.length) return () => root.classList.remove("motion-safe");
+
+    if (!("IntersectionObserver" in window)) {
+      revealTargets.forEach((target) => target.classList.add("in-view"));
+      return () => root.classList.remove("motion-safe");
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          entry.target.classList.add("in-view");
+          observer.unobserve(entry.target);
+        });
+      },
+      { threshold: 0.16, rootMargin: "0px 0px -8% 0px" }
+    );
+
+    revealTargets.forEach((target) => observer.observe(target));
+
+    return () => {
+      observer.disconnect();
+      root.classList.remove("motion-safe");
+    };
+  }, []);
+
   const toggleFav = (id) => setFavs(p => ({ ...p, [id]: !p[id] }));
+  const closeMobileMenu = () => setIsMobileMenuOpen(false);
   const triggerBellToast = () => {
     setShowBellToast(true);
     setTimeout(() => setShowBellToast(false), 4500);
@@ -488,26 +608,45 @@ export default function BidVault() {
           <Link to="/auctions">Auctions</Link>
           <Link to="/dashboard">Dashboard</Link>
         </div>
+        <button
+          className={`nav-menu-btn ${isMobileMenuOpen ? "open" : ""}`}
+          type="button"
+          aria-label="Toggle navigation menu"
+          aria-expanded={isMobileMenuOpen}
+          onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+        >
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
         <div className="nav-right">
           <button className="nav-icon-btn" onClick={toggleTheme} title="Toggle theme">{theme === "light" ? "☀️" : "🌙"}</button>
           <button className="nav-icon-btn notif" onClick={triggerBellToast}>🔔</button>
           <AuthNavActions />
         </div>
+        {isMobileMenuOpen && (
+          <div className="mobile-nav-menu">
+            <Link to="/" onClick={closeMobileMenu}>Home</Link>
+            <Link to="/browse" onClick={closeMobileMenu}>Browse</Link>
+            <Link to="/auctions" onClick={closeMobileMenu}>Auctions</Link>
+            <Link to="/dashboard" onClick={closeMobileMenu}>Dashboard</Link>
+          </div>
+        )}
       </nav>
 
       {/* HERO */}
       <section className="hero">
-        <div className="hero-badge">
+        <div className="hero-badge hero-load delay-1">
           ✨ {liveCountError ? "Live Count Unavailable" : liveAuctionsCount === null ? "Loading..." : liveAuctionsCount.toLocaleString("en-IN")} {liveCountError ? "" : "Live Auctions Happening Now"}
         </div>
-        <h1 className="hero-title">
+        <h1 className="hero-title hero-load delay-2">
           <span className="line1">Bid Smart.</span>
           <span className="line2">Win Big.</span>
         </h1>
-        <p className="hero-sub">
+        <p className="hero-sub hero-load delay-3">
           Join the world's most trusted e-auction platform. Discover rare finds, sell your treasures, and bid with total confidence.
         </p>
-        <div className="hero-ctas">
+        <div className="hero-ctas hero-load delay-4">
           <button className="cta-start" onClick={handleStartBidding}>🔥 Start Bidding</button>
           <button className="cta-sell" onClick={handleSellItem}>💎 Sell an Item</button>
         </div>
@@ -529,7 +668,7 @@ export default function BidVault() {
       </section>
 
       {/* STATS */}
-      <div className="stats">
+      <div className="stats reveal">
           {[ ["2.4M+","Active Users"],["₹840M","Total Sales"],["98.7%","Satisfaction"],["150+","Countries"]].map(([v,l]) => (
           <div className="stat" key={l}>
             <div className="stat-val">{v}</div>
@@ -539,7 +678,7 @@ export default function BidVault() {
       </div>
 
       {/* FEATURED AUCTIONS */}
-      <div>
+      <div className="reveal">
         <div className="section">
           <div className="section-center" style={{ marginBottom: "2rem" }}>
             <div className="section-badge">🔥 Hot Right Now</div>
@@ -588,7 +727,7 @@ export default function BidVault() {
       </div>
 
       {/* CATEGORIES */}
-      <div className="section-alt">
+      <div className="section-alt reveal">
         <div className="section">
           <div className="section-center" style={{ marginBottom: "2.5rem" }}>
             <div className="section-badge">Browse by Category</div>
@@ -607,7 +746,7 @@ export default function BidVault() {
       </div>
 
       {/* HOW IT WORKS */}
-      <div className="how-bg">
+      <div className="how-bg reveal">
         <div className="section">
           <div className="section-center" style={{ marginBottom: "2.5rem" }}>
             <div className="section-badge">Simple Process</div>
@@ -631,7 +770,7 @@ export default function BidVault() {
       </div>
 
       {/* FOOTER */}
-      <footer className="footer">
+      <footer className="footer reveal">
         <div className="footer-inner">
           <div className="footer-top">
             <div className="footer-brand">

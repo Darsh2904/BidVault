@@ -46,6 +46,12 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .nav-links a{color:var(--muted);text-decoration:none;font-size:.88rem;font-weight:500;cursor:pointer;transition:color .2s;}
 .nav-links a:hover{color:var(--text);}
 .nav-r{display:flex;align-items:center;gap:.75rem;}
+.nav-menu-btn{display:none;width:40px;height:40px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);cursor:pointer;align-items:center;justify-content:center;flex-direction:column;gap:4px;}
+.nav-menu-btn span{width:16px;height:2px;border-radius:2px;background:var(--text);transition:transform .2s ease,opacity .2s ease;}
+.nav-menu-btn.open span:nth-child(1){transform:translateY(6px) rotate(45deg);}
+.nav-menu-btn.open span:nth-child(2){opacity:0;}
+.nav-menu-btn.open span:nth-child(3){transform:translateY(-6px) rotate(-45deg);}
+.mobile-nav-menu{display:none;}
 .ib{width:40px;height:40px;border-radius:8px;background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1rem;}
 .ib.notif{background:#2a1f5e;border-color:var(--purple);}
 .btn-o{padding:.35rem .85rem;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:transparent;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.8rem;font-weight:600;cursor:pointer;}
@@ -185,6 +191,10 @@ tr:hover td{background:rgba(108,92,231,.04);}
 @media(max-width:1200px){
   .nav{padding:0 1rem;}
   .nav-links{display:none;}
+  .nav-menu-btn{display:inline-flex;}
+  .mobile-nav-menu{display:flex;position:absolute;top:calc(100% + 8px);left:1rem;right:1rem;flex-direction:column;gap:.15rem;padding:.45rem;border-radius:12px;border:1px solid var(--border);background:var(--bg3);box-shadow:0 14px 28px rgba(0,0,0,.35);z-index:260;}
+  .mobile-nav-menu a{text-decoration:none;color:var(--muted);padding:.58rem .62rem;border-radius:8px;font-size:.86rem;font-weight:600;}
+  .mobile-nav-menu a:hover{color:var(--text);background:var(--bg4);}
   .role-bar{padding:.7rem 1rem;overflow-x:auto;white-space:nowrap;}
   .shell{display:block;height:auto;overflow:visible;}
   .sidebar{
@@ -2056,6 +2066,7 @@ export default function Dashboard() {
   const { theme, toggleTheme } = useTheme();
   const [role, setRole] = useState("buyer");
   const [showBellToast, setShowBellToast] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [pendingAdmins, setPendingAdmins] = useState([]);
   const [adminMsg, setAdminMsg] = useState("");
   const [adminLoading, setAdminLoading] = useState(false);
@@ -2081,6 +2092,7 @@ export default function Dashboard() {
     setShowBellToast(true);
     setTimeout(() => setShowBellToast(false), 4500);
   };
+  const closeMobileMenu = () => setIsMobileMenuOpen(false);
 
   const loadPendingAdmins = async () => {
     try {
@@ -2122,11 +2134,30 @@ export default function Dashboard() {
           <Link to="/auctions">Auctions</Link>
           <Link to="/dashboard">Dashboard</Link>
         </div>
+        <button
+          className={`nav-menu-btn ${isMobileMenuOpen ? "open" : ""}`}
+          type="button"
+          aria-label="Toggle navigation menu"
+          aria-expanded={isMobileMenuOpen}
+          onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+        >
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
         <div className="nav-r">
           <button className="ib" onClick={toggleTheme} title="Toggle theme">{isLightTheme ? "☀️" : "🌙"}</button>
           <button className="ib notif" onClick={triggerBellToast}>🔔</button>
           <AuthNavActions outlineClass="btn-o" primaryClass="btn-p" showDashboardButton={false} />
         </div>
+        {isMobileMenuOpen && (
+          <div className="mobile-nav-menu">
+            <Link to="/" onClick={closeMobileMenu}>Home</Link>
+            <Link to="/browse" onClick={closeMobileMenu}>Browse</Link>
+            <Link to="/auctions" onClick={closeMobileMenu}>Auctions</Link>
+            <Link to="/dashboard" onClick={closeMobileMenu}>Dashboard</Link>
+          </div>
+        )}
       </nav>
 
       <div className="role-bar">
