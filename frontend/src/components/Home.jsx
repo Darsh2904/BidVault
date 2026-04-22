@@ -334,13 +334,18 @@ const styles = `
   .footer-brand p { color: var(--text-muted); font-size: 0.83rem; line-height: 1.7; max-width: 260px; }
   .footer-socials { display: flex; gap: 0.6rem; margin-top: 1.4rem; }
   .social-btn {
-    width: 36px; height: 36px; border-radius: 9px;
-    background: var(--bg3); border: 1px solid var(--border);
-    color: var(--text-muted); font-size: 0.75rem; font-weight: 700;
+    width: 42px; height: 42px; border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: #ffffff;
     display: flex; align-items: center; justify-content: center;
-    cursor: pointer; transition: all 0.2s;
+    cursor: pointer; transition: transform 0.2s, filter 0.2s;
   }
-  .social-btn:hover { background: var(--purple); border-color: var(--purple); color: #fff; }
+  .social-btn svg { width: 20px; height: 20px; display: block; fill: currentColor; }
+  .social-btn.facebook { background: #1877f2; }
+  .social-btn.instagram { background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%); }
+  .social-btn.linkedin { background: #0a66c2; }
+  .social-btn.github { background: #171515; }
+  .social-btn:hover { transform: translateY(-2px); filter: brightness(1.08); }
   .footer-col h4 {
     font-family: 'Syne', sans-serif; font-size: 0.8rem; font-weight: 700;
     letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-muted);
@@ -374,17 +379,7 @@ const styles = `
     .navbar { min-height: 64px; height: auto; padding: 0.55rem 0.8rem; gap: 0.55rem; }
     .nav-links { display: none; }
     .nav-menu-btn { display: inline-flex; }
-    .nav-right {
-      gap: 0.45rem;
-      flex-wrap: nowrap;
-      justify-content: flex-end;
-      max-width: 68vw;
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-      padding-bottom: 2px;
-    }
-    .nav-right::-webkit-scrollbar { display: none; }
-    .nav-icon-btn.notif { display: none; }
+    .nav-right { display: none; }
     .btn-outline,
     .btn-primary {
       flex: 0 0 auto;
@@ -419,6 +414,43 @@ const styles = `
     .mobile-nav-menu a.active {
       color: var(--text);
       background: var(--bg4);
+    }
+    .mobile-nav-actions {
+      margin-top: 0.35rem;
+      padding-top: 0.5rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+    }
+    .mobile-nav-theme {
+      width: 100%;
+      height: 38px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg4);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.82rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 0.45rem;
+      padding: 0 0.7rem;
+      cursor: pointer;
+    }
+    .mobile-nav-actions > * { width: 100%; }
+    .mobile-nav-actions a { width: 100%; text-decoration: none; }
+    .mobile-nav-actions .btn-outline,
+    .mobile-nav-actions .btn-primary {
+      width: 100%;
+      text-align: left;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 0.55rem 0.7rem;
+      font-size: 0.8rem;
     }
     .hero-ctas { width: 100%; }
     .cta-start,
@@ -457,11 +489,45 @@ const categories = [
 ];
 
 const socialLinks = [
-  { label: "X", short: "𝕏", href: "https://x.com" },
-  { label: "LinkedIn", short: "in", href: "https://www.linkedin.com/in/darsh6608/" },
-  { label: "Instagram", short: "ig", href: "https://www.instagram.com/darsh6608" },
-  { label: "Facebook", short: "fb", href: "https://www.facebook.com/share/19uwienjtt/" },
+  { label: "Facebook", href: "https://www.facebook.com/share/19uwienjtt/" },
+  { label: "Instagram", href: "https://www.instagram.com/darsh6608" },
+  { label: "LinkedIn", href: "https://www.linkedin.com/in/darsh6608/" },
+  { label: "GitHub", href: "https://github.com/Darsh2904" },
 ];
+
+function getSocialIcon(label) {
+  if (label === "Facebook") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M13.5 21v-8h2.7l.4-3h-3.1V8.1c0-.9.3-1.6 1.7-1.6h1.6V3.8c-.3 0-1.2-.1-2.3-.1-2.3 0-3.9 1.4-3.9 4v2.3H8v3h2.6v8h2.9z" />
+      </svg>
+    );
+  }
+
+  if (label === "Instagram") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M16.5 3h-9A4.5 4.5 0 0 0 3 7.5v9A4.5 4.5 0 0 0 7.5 21h9a4.5 4.5 0 0 0 4.5-4.5v-9A4.5 4.5 0 0 0 16.5 3zM19.3 16.5a2.8 2.8 0 0 1-2.8 2.8h-9a2.8 2.8 0 0 1-2.8-2.8v-9a2.8 2.8 0 0 1 2.8-2.8h9a2.8 2.8 0 0 1 2.8 2.8v9z" />
+        <path d="M12 7.5A4.5 4.5 0 1 0 16.5 12 4.5 4.5 0 0 0 12 7.5zm0 7.3a2.8 2.8 0 1 1 2.8-2.8 2.8 2.8 0 0 1-2.8 2.8z" />
+        <circle cx="17.2" cy="6.8" r="1" />
+      </svg>
+    );
+  }
+
+  if (label === "LinkedIn") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M6.1 8.4a1.8 1.8 0 1 1 0-3.6 1.8 1.8 0 0 1 0 3.6zM4.7 9.8h2.8V19H4.7V9.8zm4.5 0h2.7v1.3h.1c.4-.7 1.3-1.5 2.7-1.5 2.8 0 3.3 1.8 3.3 4.2V19h-2.8v-4.6c0-1.1 0-2.5-1.5-2.5s-1.7 1.2-1.7 2.4V19H9.2V9.8z" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.4.7-4.1-1.4-4.1-1.4a3.2 3.2 0 0 0-1.3-1.8c-1.1-.7.1-.7.1-.7a2.5 2.5 0 0 1 1.8 1.2 2.5 2.5 0 0 0 3.4 1 2.5 2.5 0 0 1 .8-1.6c-2.7-.3-5.5-1.3-5.5-6a4.7 4.7 0 0 1 1.2-3.2 4.3 4.3 0 0 1 .1-3.1s1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2a4.3 4.3 0 0 1 .1 3.1 4.7 4.7 0 0 1 1.2 3.2c0 4.7-2.9 5.7-5.6 6 .4.3.9 1 .9 2.1v3.1c0 .3.2.7.8.6A12 12 0 0 0 12 .5z" />
+      </svg>
+  );
+}
 
 const footerSections = [
   {
@@ -476,7 +542,7 @@ const footerSections = [
   {
     title: "Company",
     links: [
-      { label: "About Us", to: "/" },
+      { label: "About Us", to: "/about-us" },
       { label: "Careers", to: "/dashboard" },
       { label: "Blog", to: "/auctions" },
       { label: "Press", href: "https://github.com/Darsh2904/BidVault", external: true },
@@ -487,7 +553,7 @@ const footerSections = [
     links: [
       { label: "Help Center", to: "/help-center" },
       { label: "Contact Us", href: "mailto:darshnation@gmail.com" },
-      { label: "Trust & Safety", to: "/dashboard" },
+      { label: "Trust & Safety", to: "/trust-safety" },
       { label: "Disputes", to: "/dashboard" },
     ],
   },
@@ -630,6 +696,20 @@ export default function BidVault() {
             <Link to="/browse" onClick={closeMobileMenu}>Browse</Link>
             <Link to="/auctions" onClick={closeMobileMenu}>Auctions</Link>
             <Link to="/dashboard" onClick={closeMobileMenu}>Dashboard</Link>
+            <div className="mobile-nav-actions">
+              <button
+                className="mobile-nav-theme"
+                type="button"
+                onClick={() => {
+                  toggleTheme();
+                  closeMobileMenu();
+                }}
+              >
+                <span>{theme === "light" ? "☀️" : "🌙"}</span>
+                <span>{theme === "light" ? "Light Mode" : "Dark Mode"}</span>
+              </button>
+              <AuthNavActions />
+            </div>
           </div>
         )}
       </nav>
@@ -780,13 +860,14 @@ export default function BidVault() {
                 {socialLinks.map((social) => (
                   <a
                     key={social.label}
-                    className="social-btn"
+                    className={`social-btn ${social.label.toLowerCase()}`}
                     href={social.href}
                     target="_blank"
                     rel="noreferrer"
                     aria-label={social.label}
+                    title={social.label}
                   >
-                    {social.short}
+                    {getSocialIcon(social.label)}
                   </a>
                 ))}
               </div>
@@ -814,9 +895,9 @@ export default function BidVault() {
           <div className="footer-bottom">
             <p>© 2026 Darsh Patel. All rights reserved.</p>
             <div className="footer-legal">
-              <Link to="/auth">Privacy</Link><span> · </span>
-              <Link to="/auth">Terms</Link><span> · </span>
-              <Link to="/auth">Cookies</Link>
+              <Link to="/privacy-statement">Privacy</Link><span> · </span>
+              <Link to="/terms-conditions">Terms</Link><span> · </span>
+              <Link to="/privacy-statement#cookies">Cookies</Link>
             </div>
           </div>
         </div>

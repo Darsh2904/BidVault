@@ -7,6 +7,8 @@ import Auctions from './components/Auctions';
 import CreateAuction from './components/CreateAuction';
 import AuthPage from './components/AuthPage';
 import HelpCenter from './components/HelpCenter';
+import TrustSafety, { PrivacyStatement, TermsConditions } from './components/TrustSafety';
+import AboutUs from './components/AboutUs';
 import { PrivateRoute, PublicOnlyRoute } from './components/ProtectedRoute';
 
 function App() {
@@ -26,7 +28,11 @@ function App() {
           <Route path="/browse" element={<Browse />} />
           <Route path="/auctions" element={<Auctions />} />
           <Route path="/auctions/:id" element={<Browse />} />
+          <Route path="/about-us" element={<AboutUs />} />
           <Route path="/help-center" element={<HelpCenter />} />
+          <Route path="/trust-safety" element={<TrustSafety />} />
+          <Route path="/privacy-statement" element={<PrivacyStatement />} />
+          <Route path="/terms-conditions" element={<TermsConditions />} />
           <Route
             path="/dashboard"
             element={

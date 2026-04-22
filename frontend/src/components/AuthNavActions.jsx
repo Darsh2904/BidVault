@@ -9,24 +9,6 @@ export default function AuthNavActions({
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
 
-  const actionGroupStyle = {
-    display: "flex",
-    alignItems: "center",
-    gap: "0.5rem",
-    flexWrap: "nowrap",
-  };
-
-  const buttonStyle = {
-    whiteSpace: "nowrap",
-    flexShrink: 0,
-  };
-
-  const linkStyle = {
-    textDecoration: "none",
-    display: "inline-flex",
-    flexShrink: 0,
-  };
-
   const onLogout = () => {
     logout();
     navigate("/");
@@ -34,23 +16,21 @@ export default function AuthNavActions({
 
   if (!isAuthenticated) {
     return (
-      <div style={actionGroupStyle}>
-        <Link to="/auth" style={linkStyle}>
-          <button className={primaryClass} style={buttonStyle}>Login / Signup</button>
-        </Link>
-      </div>
+      <Link to="/auth" style={{ textDecoration: "none" }}>
+        <button className={primaryClass}>Login / Signup</button>
+      </Link>
     );
   }
 
   return (
-    <div style={actionGroupStyle}>
-      <button className={outlineClass} style={buttonStyle} title={user?.email || ""}>{user?.name || "User"}</button>
+    <>
+      <button className={outlineClass} title={user?.email || ""}>{user?.name || "User"}</button>
       {showDashboardButton && user?.role === "admin" && (
-        <Link to="/dashboard" style={linkStyle}>
-          <button className={outlineClass} style={buttonStyle}>Admin Dashboard</button>
+        <Link to="/dashboard" style={{ textDecoration: "none" }}>
+          <button className={outlineClass}>Admin Dashboard</button>
         </Link>
       )}
-      <button className={primaryClass} style={buttonStyle} onClick={onLogout}>Logout</button>
-    </div>
+      <button className={primaryClass} onClick={onLogout}>Logout</button>
+    </>
   );
 }
